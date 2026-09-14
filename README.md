@@ -22,6 +22,7 @@ npm install
 npx playwright install chromium
 npm test                 # no OPENAI_API_KEY required
 npm run demo             # demo shop + all four jobs → output/report.html
+npm run start:demo       # keep this running in another terminal (port 4173)
 npx tsx src/cli.ts run --only security,a11y --config examples/suites/shop.yaml
 npx tsx src/cli.ts report
 ```

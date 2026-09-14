@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { ConfigError } from "../errors.js";
 import { parseOnly } from "../load-suite.js";
 import { runSuite } from "../orchestrator.js";
 import type { FindingSeverity, RunReport } from "../types.js";
@@ -20,9 +21,11 @@ export async function startMcpServer(): Promise<void> {
         type: "object",
         properties: {
           target: { type: "string" },
+          allow: { type: "string", description: "Comma-separated allowlist hosts" },
           suitePath: { type: "string" },
           types: { type: "string", description: "Comma list: e2e,api,a11y,security" },
         },
+        required: ["target", "allow"],
       },
     },
     {
@@ -72,17 +75,16 @@ export async function startMcpServer(): Promise<void> {
     return { jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: `Unknown method ${msg.method}` } };
   }
 
-  process.stdin.setEncoding("utf8");
   process.stdin.resume();
-  let buffer = "";
-  process.stdin.on("data", async (chunk) => {
-    buffer += chunk;
+  let buffer = Buffer.alloc(0);
+  process.stdin.on("data", async (chunk: Buffer | string) => {
+    buffer = Buffer.concat([buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
     while (true) {
-      const msg = extractMessage();
-      if (!msg) break;
+      const extracted = extractMessage();
+      if (!extracted) break;
       let id: JsonRpc["id"] = null;
       try {
-        const parsed = JSON.parse(msg) as JsonRpc;
+        const parsed = JSON.parse(extracted) as JsonRpc;
         id = parsed.id ?? null;
         const reply = await handle(parsed);
         if (reply) writeMessage(JSON.stringify(reply));
@@ -101,29 +103,31 @@ export async function startMcpServer(): Promise<void> {
   /**
    * Splits one newline-delimited JSON object or Content-Length framed body.
    *
+   * Framing uses byte offsets so multi-byte UTF-8 payloads stay intact.
+   *
    * @returns The next message body, or null when incomplete.
    */
   function extractMessage(): string | null {
-    if (buffer.startsWith("{")) {
-      const nl = buffer.indexOf("\n");
+    if (buffer[0] === 0x7b) {
+      const nl = buffer.indexOf(0x0a);
       if (nl === -1) return null;
-      const line = buffer.slice(0, nl).trim();
-      buffer = buffer.slice(nl + 1);
+      const line = buffer.subarray(0, nl).toString("utf8").trim();
+      buffer = buffer.subarray(nl + 1);
       return line || null;
     }
-    const headerEnd = buffer.indexOf("\r\n\r\n");
+    const headerEnd = indexOfCrlfCrlf(buffer);
     if (headerEnd === -1) return null;
-    const header = buffer.slice(0, headerEnd);
+    const header = buffer.subarray(0, headerEnd).toString("utf8");
     const match = header.match(/Content-Length:\s*(\d+)/i);
     if (!match) {
-      buffer = buffer.slice(headerEnd + 4);
+      buffer = buffer.subarray(headerEnd + 4);
       return null;
     }
     const len = Number(match[1]);
     const start = headerEnd + 4;
     if (buffer.length < start + len) return null;
-    const body = buffer.slice(start, start + len);
-    buffer = buffer.slice(start + len);
+    const body = buffer.subarray(start, start + len).toString("utf8");
+    buffer = buffer.subarray(start + len);
     return body;
   }
 
@@ -131,6 +135,18 @@ export async function startMcpServer(): Promise<void> {
     process.stdin.on("end", resolve);
     process.stdin.on("close", resolve);
   });
+}
+
+/**
+ * Finds the first `\r\n\r\n` byte sequence in a buffer.
+ *
+ * @param buf - Incoming stdin bytes.
+ */
+function indexOfCrlfCrlf(buf: Buffer): number {
+  for (let i = 0; i < buf.length - 3; i++) {
+    if (buf[i] === 0x0d && buf[i + 1] === 0x0a && buf[i + 2] === 0x0d && buf[i + 3] === 0x0a) return i;
+  }
+  return -1;
 }
 
 /**
@@ -153,12 +169,18 @@ function writeMessage(body: string): void {
 async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
   const outputDir = "output";
   if (name === "run_suite") {
+    const target = String(args.target || "").trim();
+    const allowRaw = String(args.allow || "").trim();
+    if (!target || !allowRaw) {
+      throw new ConfigError("run_suite requires target and allow");
+    }
     const suitePath = String(args.suitePath || defaultSuite());
     const { report, paths } = await runSuite({
       configPath: suitePath,
       outputDir,
       only: parseOnly(args.types ? String(args.types) : undefined),
-      targetOverride: args.target ? String(args.target) : undefined,
+      targetOverride: target,
+      allowOverride: allowRaw.split(",").map((s) => s.trim()).filter(Boolean),
     });
     return JSON.stringify({ suite: report.suite, exitAborted: Boolean(report.aborted), paths, results: report.results.map((r) => ({ type: r.type, name: r.name, status: r.status })) }, null, 2);
   }
