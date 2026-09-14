@@ -9,21 +9,13 @@ import type { Scope } from "../scope.js";
 import type { E2eJob, Finding, JobResult } from "../types.js";
 import { artifactSlug, joinUrl } from "../urls.js";
 import { BudgetExceededError, ScopeViolationError } from "../errors.js";
+import { parseScriptableSteps, type ScriptStep } from "./e2e-script.js";
 
 const CART_ASSERT = /cart is not empty/i;
+const PAGE_CONTAINS = /^the page contains\s+["']?(.+?)["']?$/i;
 
 /**
  * Runs one E2E job with a saved demo script or an LLM action loop.
- *
- * Off-allowlist requests are blocked before they leave the browser. Budget and
- * scope errors are rethrown so the orchestrator can abort with a partial report.
- *
- * @param job - E2E job from the suite.
- * @param target - Suite target URL.
- * @param scope - Host allowlist.
- * @param browser - Shared Chromium instance.
- * @param budget - Time and LLM-call ceilings.
- * @param outputDir - Directory for screenshots.
  */
 export async function runE2e(
   job: E2eJob,
@@ -48,25 +40,25 @@ export async function runE2e(
     assertAllowed();
     budget.assertWithinLimits();
 
-    if (hasLlmKey()) {
+    const script = parseScriptableSteps(job.steps);
+    if (script) {
+      await runScriptable(page, script, target, scope, timeout, outputDir, screenshots);
+      assertAllowed();
+    } else if (hasLlmKey()) {
       await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
     } else if (job.name === "buy-one-item") {
       await runSavedBuyOneItem(page, scope, timeout);
       assertAllowed();
     } else {
       throw new Error(
-        `No saved script for E2E job "${job.name}" and OPENAI_API_KEY is not set. Demo job "buy-one-item" has a fallback.`,
+        `No saved script for E2E job "${job.name}" and OPENAI_API_KEY is not set. Use Fill/Click/Open/Wait/Press steps, or the demo job "buy-one-item".`,
       );
     }
 
     for (const assertion of job.assert) {
       const ok = await assertionHolds(page, assertion);
       if (!ok) {
-        findings.push({
-          severity: "fail",
-          check: "assert",
-          message: assertion,
-        });
+        findings.push({ severity: "fail", check: "assert", message: assertion });
       }
     }
 
@@ -76,24 +68,14 @@ export async function runE2e(
     screenshots.push(shot);
 
     const failed = findings.some((f) => f.severity === "fail");
-    return {
-      name: job.name,
-      type: "e2e",
-      status: failed ? "failed" : "passed",
-      findings,
-      durationMs: Date.now() - started,
-      screenshots,
-    };
+    return { name: job.name, type: "e2e", status: failed ? "failed" : "passed", findings, durationMs: Date.now() - started, screenshots };
   } catch (err) {
     if (err instanceof ScopeViolationError || err instanceof BudgetExceededError) throw err;
     return {
       name: job.name,
       type: "e2e",
       status: "failed",
-      findings: [
-        ...findings,
-        { severity: "fail", check: "e2e", message: (err as Error).message },
-      ],
+      findings: [...findings, { severity: "fail", check: "e2e", message: (err as Error).message }],
       durationMs: Date.now() - started,
       screenshots,
       error: (err as Error).message,
@@ -103,29 +85,11 @@ export async function runE2e(
   }
 }
 
-/**
- * Playwright timeout capped by remaining budget.
- *
- * @param budget - Active suite budget.
- */
 function navTimeout(budget: Budget): number {
   budget.assertWithinLimits();
   return Math.max(1, Math.min(30_000, budget.remainingMs()));
 }
 
-/**
- * LLM loop: plan, redact fill values in findings, run actions, stop when asserts hold.
- *
- * @param page - Active page.
- * @param job - E2E job.
- * @param startUrl - Absolute start URL.
- * @param scope - Host allowlist.
- * @param budget - Suite budget.
- * @param outputDir - Screenshot directory.
- * @param screenshots - Accumulated screenshot paths.
- * @param findings - Accumulated findings.
- * @param assertAllowed - Throws if a request was blocked.
- */
 async function runWithLlm(
   page: Page,
   job: E2eJob,
@@ -162,28 +126,13 @@ async function runWithLlm(
   }
 }
 
-/**
- * Copies a plan turn with `fill.value` replaced so reports never store secrets.
- *
- * @param turn - Raw planner output.
- */
 function redactTurn(turn: { actions: LlmAction[]; done: boolean }): { actions: LlmAction[]; done: boolean } {
   return {
     done: turn.done,
-    actions: turn.actions.map((action) =>
-      action.op === "fill" ? { ...action, value: "[redacted]" } : action,
-    ),
+    actions: turn.actions.map((action) => (action.op === "fill" ? { ...action, value: "[redacted]" } : action)),
   };
 }
 
-/**
- * True when every assertion is a known check and currently holds.
- *
- * Unknown assertion strings are treated as unmet so the LLM loop does not stop early.
- *
- * @param page - Active page.
- * @param asserts - Assertion strings from the suite.
- */
 async function assertionsLookMet(page: Page, asserts: string[]): Promise<boolean> {
   if (asserts.length === 0) return false;
   for (const assertion of asserts) {
@@ -192,27 +141,37 @@ async function assertionsLookMet(page: Page, asserts: string[]): Promise<boolean
   return true;
 }
 
-/**
- * Evaluates one known assertion against the demo shop DOM.
- *
- * @param page - Active page.
- * @param assertion - Suite assertion string.
- * @returns False when the check fails or is not a supported assertion.
- */
 async function assertionHolds(page: Page, assertion: string): Promise<boolean> {
   if (CART_ASSERT.test(assertion)) {
     return (await page.locator("#cart-items li").count()) >= 1;
   }
+  const contains = assertion.match(PAGE_CONTAINS);
+  if (contains) {
+    const text = contains[1].trim();
+    return (await page.getByText(text).count()) >= 1;
+  }
   return false;
 }
 
-/**
- * Saved demo path: open the first product and add it to the cart.
- *
- * @param page - Active page already on the shop home.
- * @param scope - Host allowlist.
- * @param timeout - Playwright timeout in ms.
- */
+async function runScriptable(
+  page: Page,
+  steps: ScriptStep[],
+  target: string,
+  scope: Scope,
+  timeout: number,
+  outputDir: string,
+  screenshots: string[],
+): Promise<void> {
+  const actions: LlmAction[] = steps.map((step) => {
+    if (step.op === "fill") return { op: "fill", selector: step.selector, value: step.value };
+    if (step.op === "click") return { op: "click", selector: step.selector };
+    if (step.op === "open") return { op: "goto", url: joinUrl(target, step.url) };
+    if (step.op === "wait") return { op: "wait", ms: Math.min(step.ms, 5_000) };
+    return { op: "press", key: step.key };
+  });
+  await runActions(page, actions, scope, outputDir, screenshots, timeout);
+}
+
 async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Promise<void> {
   await page.locator(".product-link").first().click({ timeout });
   scope.assert(page.url());
@@ -223,16 +182,6 @@ async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Pr
   if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
 }
 
-/**
- * Executes planner actions with allowlist checks on navigation.
- *
- * @param page - Active page.
- * @param actions - Validated LLM actions.
- * @param scope - Host allowlist.
- * @param outputDir - Screenshot directory.
- * @param screenshots - Accumulated paths.
- * @param timeout - Playwright timeout in ms.
- */
 async function runActions(
   page: Page,
   actions: LlmAction[],
@@ -251,6 +200,7 @@ async function runActions(
       }
       case "click":
         await locate(page, action.selector).first().click({ timeout });
+        await page.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
         break;
       case "fill":
         await locate(page, action.selector).first().fill(action.value, { timeout });
@@ -276,12 +226,6 @@ async function runActions(
   }
 }
 
-/**
- * Maps ARIA-style planner selectors onto Playwright locators.
- *
- * @param page - Active page.
- * @param selector - CSS, `link Name`, or `role=link[name=...]`.
- */
 function locate(page: Page, selector: string) {
   const trimmed = selector.trim();
   const roleEq = trimmed.match(
@@ -303,11 +247,6 @@ function locate(page: Page, selector: string) {
   return page.locator(trimmed);
 }
 
-/**
- * Escapes a string for use inside a RegExp.
- *
- * @param value - Literal text.
- */
 function escapeRe(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
