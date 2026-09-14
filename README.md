@@ -19,9 +19,11 @@ Then it writes **one report**: pass / fail and what to fix.
 
 Spec first. Application code is not in this repo yet.
 
-- Build path: [ROADMAP.md](./ROADMAP.md)
-- Day-1 coding order: [PLAN.md](./PLAN.md)
+**Build this project:** [ROADMAP.md](./ROADMAP.md) — Phase 0 spec (done) → Phase 1 runnable v0 → real staging URL → replay → npm.
+
+- Day-1 coding order (Phase 1 only): [PLAN.md](./PLAN.md)
 - Product walls: [IDEA.md](./IDEA.md)
+- Next: Phase 1.1 — `package.json`, TypeScript, Playwright, tiny demo shop
 
 ```bash
 # v0 (planned)
