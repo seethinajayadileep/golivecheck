@@ -27,12 +27,11 @@ export async function runA11y(
   scope.assert(url);
 
   const context = await browser.newContext({ serviceWorkers: "block" });
-  const assertAllowed = await guardContext(context, scope);
-  const page = await context.newPage();
-  budget?.assertWithinLimits();
-  const timeout = budget ? Math.max(1, Math.min(30_000, budget.remainingMs())) : 30_000;
-
   try {
+    const assertAllowed = await guardContext(context, scope);
+    const page = await context.newPage();
+    budget?.assertWithinLimits();
+    const timeout = budget ? Math.max(1, Math.min(30_000, budget.remainingMs())) : 30_000;
     await page.goto(url, { waitUntil: "domcontentloaded", timeout });
     assertAllowed();
     scope.assert(page.url());

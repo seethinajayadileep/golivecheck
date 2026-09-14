@@ -30,9 +30,9 @@ npx tsx src/cli.ts report
 After `npm run build`:
 
 ```bash
-npx golivecheck-agent run --config examples/suites/shop.yaml
-npx golivecheck-agent init
-npx golivecheck-agent mcp
+npx golivecheck run --config examples/suites/shop.yaml
+npx golivecheck init
+npx golivecheck mcp
 ```
 
 ---

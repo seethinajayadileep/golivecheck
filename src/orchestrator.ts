@@ -50,7 +50,11 @@ export async function runSuite(
       aborted = { code: "ERROR", message: (err as Error).message };
     }
   } finally {
-    await browser?.close();
+    try {
+      await browser?.close();
+    } catch (err) {
+      aborted ??= { code: "ERROR", message: (err as Error).message };
+    }
   }
 
   const report: RunReport = {
