@@ -15,7 +15,7 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
 | Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
 | CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 2 |
+| Next | Phase 2 — point at a staging URL you own; finish real-site false-positive cleanup |
 
 ---
 
@@ -62,11 +62,12 @@ npx golivecheck-agent run --only security,a11y   # works with no OPENAI_API_KEY
 
 Goal: one real staging URL + CI + another AI can call us.
 
-- Point `golivecheck.config.yaml` at a site you own
-- Env vars for test login
-- GitHub Action on PRs (`--only security,a11y,api` by default)
-- Finish MCP + Cursor snippet in README
-- Fix false a11y / header / flaky E2E from the real site
+- [x] `${VAR}` in suite YAML (target / login) — `GOLIVECHECK_TARGET`, `GOLIVECHECK_USER`, `GOLIVECHECK_PASSWORD`
+- [ ] Point `golivecheck.config.yaml` at a staging site you own
+- [x] Env vars for test login (Fill/Click steps, no LLM)
+- [x] GitHub Action example for PRs (`--only security,a11y,api` by default)
+- [x] MCP + Cursor snippet in README
+- [ ] Fix false a11y / header / flaky E2E from the real site
 
 **Exit:** a PR on that app fails when a11y/security/API is red; Cursor can `run_suite`.
 

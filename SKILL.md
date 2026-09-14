@@ -56,6 +56,8 @@ Or MCP tools:
 
 Cheap gate (no key): `--only security,a11y,api`
 
+Login without an LLM: quoted suite steps `"Fill #email with ${GOLIVECHECK_USER}"` / `"Fill #password with ${GOLIVECHECK_PASSWORD}"` / `"Click #login-submit"` (quote CSS `#ids` so YAML does not treat `#` as a comment). Cursor MCP config: `examples/cursor-mcp.json`.
+
 ---
 
 ## What to tell the user
