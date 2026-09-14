@@ -61,4 +61,14 @@ jobs:
 `);
     expect(() => loadSuite(file)).toThrow(/Unsupported E2E assertion/);
   });
+
+  it("rejects API jobs with no requests", () => {
+    const file = writeSuite(`name: x
+target: http://127.0.0.1:4173
+jobs:
+  - type: api
+    name: a
+`);
+    expect(() => loadSuite(file)).toThrow(/non-empty requests/);
+  });
 });

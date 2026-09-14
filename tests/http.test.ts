@@ -38,4 +38,19 @@ describe("http", () => {
       await fixture.close();
     }
   });
+
+  it("passes redirect: \"manual\" to fetch even when init asks for follow", async () => {
+    const original = globalThis.fetch;
+    let seen: RequestInit | undefined;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seen = init;
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    try {
+      await scopedFetch("http://127.0.0.1/", new Scope(["127.0.0.1"]), { redirect: "follow" });
+      expect(seen?.redirect).toBe("manual");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });
