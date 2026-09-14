@@ -1,0 +1,19 @@
+# Copy into a repo you own as .github/workflows/golivecheck.yml
+# Cheap PR gate: security + a11y + API. No LLM key.
+name: golivecheck
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  golivecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seethinajayadileep/golivecheck@main
+        with:
+          target: ${{ vars.GOLIVECHECK_TARGET }}
+          allow: ${{ vars.GOLIVECHECK_ALLOW }}
+          config: golivecheck.config.yaml
+          only: security,a11y,api
