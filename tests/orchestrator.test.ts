@@ -1,12 +1,20 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { startDemoShop } from "../examples/demo-site/server.mjs";
 import { runSuite } from "../src/orchestrator.js";
 
 describe("orchestrator", () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+
+  afterEach(() => {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  });
+
   it("writes JUnit with four testcases from the demo suite", async () => {
+    process.env.OPENAI_API_KEY = "";
     const shop = await startDemoShop(0);
     const dir = mkdtempSync(path.join(tmpdir(), "glc-run-"));
     const suitePath = path.join(dir, "suite.yaml");

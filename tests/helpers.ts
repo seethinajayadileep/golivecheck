@@ -1,5 +1,10 @@
 import http from "node:http";
 
+/**
+ * Starts a loopback HTTP fixture and returns its URL plus a close function.
+ *
+ * @param handler - Node request handler.
+ */
 export function startFixture(
   handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
 ): Promise<{ url: string; close: () => Promise<void> }> {

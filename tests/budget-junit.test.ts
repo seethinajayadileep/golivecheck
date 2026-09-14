@@ -38,4 +38,24 @@ describe("junit", () => {
     expect(xml).toContain('name="baseline"');
     expect(xml.match(/<testcase /g)?.length).toBe(4);
   });
+
+  it("adds an abort testcase with an error element", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "glc-abort-"));
+    const report: RunReport = {
+      suite: "demo-shop",
+      target: "http://127.0.0.1:4173",
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      aborted: { code: "SCOPE_VIOLATION", message: "SCOPE_VIOLATION: https://evil.com/ is not on the allowlist (127.0.0.1)" },
+      results: [
+        { name: "baseline", type: "security", status: "passed", findings: [], durationMs: 1, screenshots: [] },
+      ],
+    };
+    const xml = readFileSync(writeReports(report, dir).junit, "utf8");
+    expect(xml).toContain('name="aborted"');
+    expect(xml).toContain("<error");
+    expect(xml).toContain("SCOPE_VIOLATION");
+    expect(xml).toContain('tests="2"');
+    expect(xml).toContain('errors="1"');
+  });
 });
