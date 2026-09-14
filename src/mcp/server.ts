@@ -6,6 +6,11 @@ import type { FindingSeverity, RunReport } from "../types.js";
 
 type JsonRpc = { jsonrpc: "2.0"; id?: number | string | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown };
 
+/**
+ * Serves GoLiveCheck tools over MCP stdio until stdin closes.
+ *
+ * Parse and tool failures become JSON-RPC errors; the listener stays alive.
+ */
 export async function startMcpServer(): Promise<void> {
   const tools = [
     {
@@ -35,6 +40,12 @@ export async function startMcpServer(): Promise<void> {
     },
   ];
 
+  /**
+   * Handles one JSON-RPC message.
+   *
+   * @param msg - Parsed request.
+   * @returns A response, or null for notifications.
+   */
   async function handle(msg: JsonRpc): Promise<JsonRpc | null> {
     if (!msg.method) return null;
     if (msg.method === "initialize") {
@@ -62,18 +73,36 @@ export async function startMcpServer(): Promise<void> {
   }
 
   process.stdin.setEncoding("utf8");
+  process.stdin.resume();
   let buffer = "";
   process.stdin.on("data", async (chunk) => {
     buffer += chunk;
     while (true) {
       const msg = extractMessage();
       if (!msg) break;
-      const parsed = JSON.parse(msg) as JsonRpc;
-      const reply = await handle(parsed);
-      if (reply) writeMessage(JSON.stringify(reply));
+      let id: JsonRpc["id"] = null;
+      try {
+        const parsed = JSON.parse(msg) as JsonRpc;
+        id = parsed.id ?? null;
+        const reply = await handle(parsed);
+        if (reply) writeMessage(JSON.stringify(reply));
+      } catch (err) {
+        writeMessage(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32603, message: (err as Error).message || "Internal error" },
+          }),
+        );
+      }
     }
   });
 
+  /**
+   * Splits one newline-delimited JSON object or Content-Length framed body.
+   *
+   * @returns The next message body, or null when incomplete.
+   */
   function extractMessage(): string | null {
     if (buffer.startsWith("{")) {
       const nl = buffer.indexOf("\n");
@@ -97,14 +126,30 @@ export async function startMcpServer(): Promise<void> {
     buffer = buffer.slice(start + len);
     return body;
   }
+
+  await new Promise<void>((resolve) => {
+    process.stdin.on("end", resolve);
+    process.stdin.on("close", resolve);
+  });
 }
 
+/**
+ * Writes one Content-Length framed JSON-RPC message to stdout.
+ *
+ * @param body - Serialized JSON.
+ */
 function writeMessage(body: string): void {
   const payload = Buffer.from(body, "utf8");
   process.stdout.write(`Content-Length: ${payload.length}\r\n\r\n`);
   process.stdout.write(payload);
 }
 
+/**
+ * Dispatches an MCP tool name to suite run or report readers.
+ *
+ * @param name - Tool name.
+ * @param args - Tool arguments.
+ */
 async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
   const outputDir = "output";
   if (name === "run_suite") {
@@ -144,6 +189,11 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
   return `Unknown tool ${name}`;
 }
 
+/**
+ * First existing default suite path for MCP `run_suite`.
+ *
+ * @returns A suite YAML path.
+ */
 function defaultSuite(): string {
   for (const c of ["golivecheck.config.yaml", "golivecheck.yaml", "examples/suites/shop.yaml"]) {
     if (existsSync(c)) return c;

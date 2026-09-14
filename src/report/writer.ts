@@ -2,6 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { JobResult, RunReport } from "../types.js";
 
+/**
+ * Writes JSON, HTML, and JUnit reports for a suite run.
+ *
+ * @param report - Finished (or aborted) run.
+ * @param outputDir - Destination directory.
+ * @returns Paths to the three report files.
+ */
 export function writeReports(report: RunReport, outputDir: string): { html: string; json: string; junit: string } {
   mkdirSync(outputDir, { recursive: true });
   const jsonPath = path.join(outputDir, "report.json");
@@ -13,6 +20,11 @@ export function writeReports(report: RunReport, outputDir: string): { html: stri
   return { html: htmlPath, json: jsonPath, junit: junitPath };
 }
 
+/**
+ * Renders a simple HTML report.
+ *
+ * @param report - Finished run.
+ */
 function renderHtml(report: RunReport): string {
   const jobs = report.results
     .map((job) => {
@@ -56,16 +68,32 @@ function renderHtml(report: RunReport): string {
 </html>`;
 }
 
+/**
+ * Renders JUnit XML, adding an abort testcase when the run was cut short.
+ *
+ * @param report - Finished run.
+ */
 function renderJunit(report: RunReport): string {
   const failures = report.results.filter((r) => r.status === "failed" || r.status === "error").length;
-  const cases = report.results.map((r) => testCase(r)).join("\n");
+  const cases = report.results.map((r) => testCase(r));
+  if (report.aborted) {
+    cases.push(`  <testcase classname="golivecheck" name="aborted" time="0">
+    <error message="${escapeXml(report.aborted.code)}">${escapeXml(report.aborted.message)}</error>
+  </testcase>`);
+  }
+  const tests = report.results.length + (report.aborted ? 1 : 0);
   return `<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="${escapeXml(report.suite)}" tests="${report.results.length}" failures="${failures}"${report.aborted ? ` errors="1"` : ""}>
-${cases}
+<testsuite name="${escapeXml(report.suite)}" tests="${tests}" failures="${failures}"${report.aborted ? ` errors="1"` : ""}>
+${cases.join("\n")}
 </testsuite>
 `;
 }
 
+/**
+ * One JUnit testcase for a job result.
+ *
+ * @param job - Job result.
+ */
 function testCase(job: JobResult): string {
   const time = (job.durationMs / 1000).toFixed(3);
   const fail = job.findings.filter((f) => f.severity === "fail");
@@ -78,10 +106,20 @@ function testCase(job: JobResult): string {
   </testcase>`;
 }
 
+/**
+ * Escapes text for HTML.
+ *
+ * @param value - Raw string.
+ */
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
 }
 
+/**
+ * Escapes text for XML (same mapping as HTML).
+ *
+ * @param value - Raw string.
+ */
 function escapeXml(value: string): string {
   return escapeHtml(value);
 }
