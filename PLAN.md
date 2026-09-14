@@ -2,6 +2,8 @@
 
 Do not start with a dashboard, brand site, or “all of Midscene + Strix.”
 
+The full product path (v0 → real app → npm) is [ROADMAP.md](./ROADMAP.md). This file is **Phase 1 only**.
+
 Implementers: complete **one row at a time**. Do not skip to MCP before plugins work.
 
 ---
@@ -38,12 +40,9 @@ If time is short: **cut MCP first**, then video. **Never** cut security / a11y /
 
 ---
 
-## After v0 (not today)
+## After v0
 
-1. Point YAML at one real staging URL and fix false failures
-2. Finish MCP + Cursor snippet
-3. Replay JSON → Playwright spec
-4. npm publish `golivecheck-agent`
+See [ROADMAP.md](./ROADMAP.md) Phase 2+.
 
 ---
 
@@ -70,6 +69,6 @@ If time is short: **cut MCP first**, then video. **Never** cut security / a11y /
 
 ## Spec vs code
 
-This repository **is** GoLiveCheck. Keep `IDEA.md`, `AGENTS.md`, and `SKILL.md` at the repo root when you add `src/`.
+This repository **is** GoLiveCheck. Keep `IDEA.md`, `AGENTS.md`, `SKILL.md`, and `ROADMAP.md` at the repo root when you add `src/`.
 
 Do not merge an unrelated app (PII redaction, etc.) into this package.

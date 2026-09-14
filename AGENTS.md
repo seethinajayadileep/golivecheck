@@ -1,6 +1,6 @@
 # AGENTS.md — implementing GoLiveCheck
 
-You are working **inside this project**. Follow `IDEA.md` first. This file is how to build and change it.
+You are working **inside this project**. Follow `IDEA.md` first, then [ROADMAP.md](./ROADMAP.md). This file is how to build and change it.
 
 ---
 
@@ -23,11 +23,13 @@ GoLiveCheck is a testing agent. One YAML suite runs four job types:
 .
   README.md
   LICENSE                 # MIT
+  ROADMAP.md
+  PLAN.md
   package.json
   tsconfig.json
   action.yml
   .github/workflows/ci.yml
-  AGENTS.md               # copy of this file at repo root when code lands
+  AGENTS.md
   IDEA.md
   SKILL.md
   examples/
@@ -50,7 +52,7 @@ GoLiveCheck is a testing agent. One YAML suite runs four job types:
   tests/
 ```
 
-This workspace may still only contain **spec markdown**. If code is missing, implement from `PLAN.md`. If code exists, match this layout.
+This workspace may still only contain **spec markdown**. If code is missing, implement Phase 1 from [PLAN.md](./PLAN.md) / [ROADMAP.md](./ROADMAP.md). If code exists, match this layout.
 
 ---
 
@@ -147,3 +149,4 @@ A change is done when:
 - Install Kali / Nuclei exploit templates
 - Require an LLM key for a11y, API, or security
 - Mix this product into unrelated tools (e.g. PII redaction) in the same package
+- Skip ROADMAP phases (no npm publish before a working demo)

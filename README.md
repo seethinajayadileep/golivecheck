@@ -17,7 +17,11 @@ Then it writes **one report**: pass / fail and what to fix.
 
 ## Status
 
-Spec first. Application code is not in this repo yet. Implementers follow [PLAN.md](./PLAN.md) without breaking [IDEA.md](./IDEA.md) walls.
+Spec first. Application code is not in this repo yet.
+
+- Build path: [ROADMAP.md](./ROADMAP.md)
+- Day-1 coding order: [PLAN.md](./PLAN.md)
+- Product walls: [IDEA.md](./IDEA.md)
 
 ```bash
 # v0 (planned)
@@ -33,10 +37,11 @@ npx golivecheck-agent report
 | File | Read when |
 |---|---|
 | [IDEA.md](./IDEA.md) | First. What we are building, who it is for, walls. |
+| [ROADMAP.md](./ROADMAP.md) | Phases from spec → v0 → real app → npm. |
+| [PLAN.md](./PLAN.md) | Exact day-1 build order. |
 | [AGENTS.md](./AGENTS.md) | You will **implement or change** this repo. |
 | [SKILL.md](./SKILL.md) | You will **run** GoLiveCheck for a user (CLI or MCP). |
 | [PRODUCT.md](./PRODUCT.md) | Features, uniqueness, what we will not build. |
-| [PLAN.md](./PLAN.md) | Build order for v0. |
 
 Do not invent extra product scope. If IDEA.md and the user disagree, **ask** — do not expand into pentest, mobile, or SaaS.
 
@@ -46,7 +51,7 @@ Do not invent extra product scope. If IDEA.md and the user disagree, **ask** —
 
 Config lives in [`.coderabbit.yaml`](./.coderabbit.yaml) (`reviews.auto_review.enabled: true`).
 
-That file does **not** install the bot. You still have to add the GitHub App to this repo. Steps: [CODERABBIT.md](./CODERABBIT.md).
+Public repo with under 10 stars: comment `@coderabbitai review` on each PR. Setup: [CODERABBIT.md](./CODERABBIT.md).
 
 ---
 
