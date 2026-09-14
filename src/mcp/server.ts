@@ -99,10 +99,33 @@ export async function startMcpServer(): Promise<void> {
           const extracted = extractMessage();
           if (!extracted) break;
           let id: JsonRpc["id"] = null;
+          let parsed: unknown;
           try {
-            const parsed = JSON.parse(extracted) as JsonRpc;
-            id = parsed.id ?? null;
-            const reply = await handle(parsed);
+            parsed = JSON.parse(extracted);
+          } catch (err) {
+            writeMessage(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                id: null,
+                error: { code: -32700, message: (err as Error).message || "Parse error" },
+              }),
+            );
+            continue;
+          }
+          const request = asJsonRpc(parsed);
+          if (!request) {
+            writeMessage(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                id: jsonRpcId(parsed),
+                error: { code: -32600, message: "Invalid Request" },
+              }),
+            );
+            continue;
+          }
+          id = request.id ?? null;
+          try {
+            const reply = await handle(request);
             if (reply) writeMessage(JSON.stringify(reply));
           } catch (err) {
             writeMessage(
@@ -156,6 +179,37 @@ export async function startMcpServer(): Promise<void> {
     process.stdin.on("end", resolve);
     process.stdin.on("close", resolve);
   });
+}
+
+/**
+ * Accepts a JSON-RPC 2.0 request or notification matching {@link JsonRpc}.
+ *
+ * @param value - Parsed JSON.
+ */
+function asJsonRpc(value: unknown): JsonRpc | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const rec = value as Record<string, unknown>;
+  if (rec.jsonrpc !== "2.0") return null;
+  if (typeof rec.method !== "string" || !rec.method) return null;
+  if (rec.id !== undefined && rec.id !== null && typeof rec.id !== "string" && typeof rec.id !== "number") {
+    return null;
+  }
+  if (rec.params !== undefined && (typeof rec.params !== "object" || rec.params === null || Array.isArray(rec.params))) {
+    return null;
+  }
+  return value as JsonRpc;
+}
+
+/**
+ * Reads a JSON-RPC id from unknown JSON when the envelope itself is invalid.
+ *
+ * @param value - Parsed JSON.
+ */
+function jsonRpcId(value: unknown): JsonRpc["id"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const id = (value as { id?: unknown }).id;
+  if (id === null || typeof id === "string" || typeof id === "number") return id;
+  return null;
 }
 
 /**

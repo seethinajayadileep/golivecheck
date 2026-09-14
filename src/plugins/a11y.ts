@@ -39,6 +39,7 @@ export async function runA11y(
     const tags = expandTags(job.tags);
     builder.withTags(tags);
     const results = await builder.analyze();
+    assertAllowed();
     budget?.assertWithinLimits();
     const findings: Finding[] = [];
     for (const v of results.violations) {
