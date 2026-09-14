@@ -77,8 +77,50 @@ jobs:
       await shop.close();
     }
   });
+
+  it("aborts scriptable Wait steps when maxMinutes is exhausted", async () => {
+    process.env.OPENAI_API_KEY = "";
+    const shop = await startDemoShop(0);
+    const dir = mkdtempSync(path.join(tmpdir(), "glc-budget-wait-"));
+    const suitePath = path.join(dir, "suite.yaml");
+    writeFileSync(
+      suitePath,
+      `name: budget-wait
+target: ${shop.url}
+allow:
+  - 127.0.0.1
+budget:
+  maxMinutes: 0.02
+jobs:
+  - type: e2e
+    name: wait-out
+    startUrl: /
+    steps:
+      - Wait 5000 ms
+      - Wait 5000 ms
+      - Wait 5000 ms
+    assert: []
+`,
+    );
+    try {
+      const { report, exitCode } = await runSuite({
+        configPath: suitePath,
+        outputDir: path.join(dir, "output"),
+      });
+      expect(exitCode).toBe(2);
+      expect(report.aborted?.code).toBe("BUDGET_EXCEEDED");
+    } finally {
+      await shop.close();
+    }
+  });
 });
 
+/**
+ * Restores or deletes a process env key.
+ *
+ * @param name - Env var name.
+ * @param value - Previous value, or undefined if it was unset.
+ */
 function restore(name: string, value: string | undefined): void {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;
