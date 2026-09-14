@@ -14,7 +14,8 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 | Product spec | Done (`IDEA`, `AGENTS`, `SKILL`, `PRODUCT`, `PLAN`) |
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
 | Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
-| Next | Add `.github/workflows/ci.yml` so `npm test` / `npm run demo` run on every PR with no secrets, then Phase 2 |
+| CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
+| Next | Phase 2 |
 
 ---
 
@@ -42,7 +43,7 @@ Build in this order (same as [PLAN.md](./PLAN.md)):
 6. [x] HTML + JSON + JUnit report
 7. [x] CLI: `init` / `run` / `report`
 8. [x] GitHub Action + MCP (`run_suite`, `get_last_report`, `list_findings`)
-9. [ ] Unit tests exist; **add `.github/workflows/ci.yml`** (`npm test` + `npm run demo`, no secrets)
+9. [x] Unit tests exist; **`.github/workflows/ci.yml`** (`npm test` + `npm run demo`, no secrets)
 
 **Cut if needed:** MCP, then video. **Never cut** security / a11y / API.
 
