@@ -8,6 +8,12 @@ import { runSuite } from "./orchestrator.js";
 
 const DEFAULT_OUTPUT = "output";
 
+/**
+ * Dispatches `init`, `run`, `report`, and `mcp` from argv.
+ *
+ * @param argv - Process argument vector.
+ * @returns Exit code (MCP returns 0 without ending the event loop).
+ */
 async function main(argv: string[]): Promise<number> {
   const cmd = argv[2] || "help";
   if (cmd === "help" || cmd === "--help" || cmd === "-h") {
@@ -25,6 +31,7 @@ async function main(argv: string[]): Promise<number> {
   return 2;
 }
 
+/** Prints CLI usage to stdout. */
 function printHelp(): void {
   console.log(`GoLiveCheck — scoped testing agent
 
@@ -38,6 +45,11 @@ Only scan systems you own. Security checks are read-only.
 `);
 }
 
+/**
+ * Writes a starter suite YAML if the destination does not exist.
+ *
+ * @param dir - Directory to create `golivecheck.config.yaml` in.
+ */
 function cmdInit(dir: string): number {
   mkdirSync(dir, { recursive: true });
   const dest = path.join(dir, "golivecheck.config.yaml");
@@ -72,6 +84,11 @@ jobs:
   return 0;
 }
 
+/**
+ * Runs a suite and prints job statuses.
+ *
+ * @param args - Flags after `run`.
+ */
 async function cmdRun(args: string[]): Promise<number> {
   const flags = parseFlags(args);
   const configPath = resolveConfig(flags.config);
@@ -97,6 +114,11 @@ async function cmdRun(args: string[]): Promise<number> {
   }
 }
 
+/**
+ * Prints the last HTML report path and job statuses.
+ *
+ * @param args - Flags after `report`.
+ */
 function cmdReport(args: string[]): number {
   const flags = parseFlags(args);
   const outputDir = flags.output || DEFAULT_OUTPUT;
@@ -114,6 +136,11 @@ function cmdReport(args: string[]): number {
   return 0;
 }
 
+/**
+ * Resolves `--config` or the first default suite file that exists.
+ *
+ * @param explicit - Path from `--config`.
+ */
 function resolveConfig(explicit?: string): string {
   if (explicit) return explicit;
   for (const candidate of ["golivecheck.config.yaml", "golivecheck.yaml", "examples/suites/shop.yaml"]) {
@@ -122,6 +149,11 @@ function resolveConfig(explicit?: string): string {
   throw new ConfigError("No suite file found. Pass --config or run golivecheck init");
 }
 
+/**
+ * Parses `--flag value` pairs used by `run` and `report`.
+ *
+ * @param args - Argument list after the command.
+ */
 function parseFlags(args: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (let i = 0; i < args.length; i++) {
@@ -134,9 +166,11 @@ function parseFlags(args: string[]): Record<string, string> {
 }
 
 main(process.argv).then(
-  (code) => process.exit(code),
+  (code) => {
+    process.exitCode = code;
+  },
   (err) => {
     console.error(err);
-    process.exit(2);
+    process.exitCode = 2;
   },
 );

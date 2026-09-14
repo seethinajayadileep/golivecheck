@@ -1,11 +1,18 @@
 import { completeJson, parseActions, type LlmAction } from "./client.js";
 
+/**
+ * Asks the LLM for the next Playwright actions given page context.
+ *
+ * @param input - Steps, assertions, URLs, snapshot, and optional budget signal.
+ * @returns Parsed actions and a done flag from the model JSON.
+ */
 export async function planActions(input: {
   steps: string[];
   assert: string[];
   startUrl: string;
   currentUrl: string;
   ariaSnapshot: string;
+  signal?: AbortSignal;
 }): Promise<{ actions: LlmAction[]; done: boolean }> {
   const prompt = [
     "You are driving a Playwright browser on an allowlisted demo site.",
@@ -24,7 +31,7 @@ export async function planActions(input: {
     "Accessibility snapshot (truncated):",
     input.ariaSnapshot.slice(0, 8000),
   ].join("\n");
-  const raw = await completeJson(prompt);
+  const raw = await completeJson(prompt, input.signal);
   let done = false;
   try {
     const parsed = JSON.parse(raw) as { done?: unknown };
