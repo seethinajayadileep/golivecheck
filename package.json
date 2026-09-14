@@ -1,0 +1,7 @@
+{
+  "name": "golivecheck-agent",
+  "version": "0.0.1",
+  "description": "Testing agent: E2E, API, accessibility, and safe security — allowlisted and read-only.",
+  "license": "MIT",
+  "type": "module"
+}
