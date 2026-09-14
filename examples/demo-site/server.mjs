@@ -47,7 +47,7 @@ function layout(title, body) {
 </head>
 <body>
   <header>
-    <p><a href="/">Demo shop</a> · <a href="/cart">Cart</a></p>
+    <p><a href="/">Demo shop</a> · <a href="/cart">Cart</a> · <a href="/login">Sign in</a></p>
     <h1>${title}</h1>
   </header>
   <main>${body}</main>
@@ -89,6 +89,21 @@ function cartPage(ids) {
       ? "<p>Cart is empty.</p>"
       : `<ul id="cart-items">${items.map((p) => `<li>${p.name} — $${p.price}</li>`).join("")}</ul>`;
   return layout("Cart", list);
+}
+
+function loginPage(error) {
+  const err = error ? `<p role="alert">${error}</p>` : "";
+  return layout(
+    "Sign in",
+    `${err}
+     <form method="post" action="/login">
+      <p><label for="email">Email</label><br>
+      <input id="email" name="email" type="email" autocomplete="username" required></p>
+      <p><label for="password">Password</label><br>
+      <input id="password" name="password" type="password" autocomplete="current-password" required></p>
+      <p><button id="login-submit" type="submit">Sign in</button></p>
+     </form>`,
+  );
 }
 
 function applyHeaders(res, contentType) {
@@ -133,6 +148,29 @@ export function startDemoShop(port = 4173, host = "127.0.0.1") {
       }
       applyHeaders(res, "text/html; charset=utf-8");
       res.end(html);
+      return;
+    }
+
+    if (pathname === "/login") {
+      if (req.method === "POST") {
+        const chunks = [];
+        req.on("data", (c) => chunks.push(c));
+        req.on("end", () => {
+          const body = new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+          const user = body.get("email") || "";
+          const pass = body.get("password") || "";
+          applyHeaders(res, "text/html; charset=utf-8");
+          if (user === "shopper@example.com" && pass === "pass123") {
+            res.end(layout("Account", `<p>Signed in as ${user}.</p>`));
+            return;
+          }
+          res.statusCode = 401;
+          res.end(loginPage("Invalid email or password"));
+        });
+        return;
+      }
+      applyHeaders(res, "text/html; charset=utf-8");
+      res.end(loginPage());
       return;
     }
 
