@@ -4,7 +4,7 @@ import { ConfigError } from "./errors.js";
 import type { Job, JobType, Suite } from "./types.js";
 
 const JOB_TYPES: JobType[] = ["e2e", "api", "a11y", "security"];
-const CART_ASSERT = /cart is not empty/i;
+const CART_ASSERT = /^the cart is not empty\.?$/i;
 
 /**
  * Loads and validates a suite YAML file.
@@ -123,11 +123,13 @@ function parseJob(raw: unknown, index: number): Job {
     };
   }
   if (type === "api") {
-    const requests = Array.isArray(job.requests) ? job.requests : [];
+    if (!Array.isArray(job.requests) || job.requests.length === 0) {
+      throw new ConfigError(`API job ${name} must have a non-empty requests list`);
+    }
     return {
       type,
       name,
-      requests: requests.map((r, ri) => parseApiRequest(r, name, ri)),
+      requests: job.requests.map((r, ri) => parseApiRequest(r, name, ri)),
     };
   }
   if (type === "a11y") {

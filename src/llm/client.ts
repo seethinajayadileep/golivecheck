@@ -24,6 +24,8 @@ export function hasLlmKey(): boolean {
 export async function completeJson(prompt: string, signal?: AbortSignal): Promise<string> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY is not set");
+  const timeout = AbortSignal.timeout(30_000);
+  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -32,7 +34,7 @@ export async function completeJson(prompt: string, signal?: AbortSignal): Promis
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      signal,
+      signal: combined,
       body: JSON.stringify({
         model: process.env.GOLIVECHECK_LLM_MODEL || "gpt-4o-mini",
         temperature: 0,
@@ -48,8 +50,11 @@ export async function completeJson(prompt: string, signal?: AbortSignal): Promis
       }),
     });
   } catch (err) {
-    if (signal?.aborted || (err as Error).name === "AbortError") {
+    if (signal?.aborted) {
       throw new BudgetExceededError("LLM call aborted by budget");
+    }
+    if (timeout.aborted || (err as Error).name === "TimeoutError" || (err as Error).name === "AbortError") {
+      throw new Error("LLM request timed out");
     }
     throw err;
   }

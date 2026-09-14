@@ -109,7 +109,8 @@ export async function runE2e(
  * @param budget - Active suite budget.
  */
 function navTimeout(budget: Budget): number {
-  return Math.max(1_000, Math.min(30_000, budget.remainingMs() || 30_000));
+  budget.assertWithinLimits();
+  return Math.max(1, Math.min(30_000, budget.remainingMs()));
 }
 
 /**
@@ -219,7 +220,7 @@ async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Pr
   await page.waitForURL(/\/cart/, { timeout });
   scope.assert(page.url());
   const count = await page.locator("#cart-items li").count();
-  if (count < 1) throw new Error("The cart is not empty — assertion failed");
+  if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
 }
 
 /**

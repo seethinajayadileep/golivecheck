@@ -71,8 +71,8 @@ export async function runSecurity(
   for (const cookie of headers.getSetCookie?.() ?? splitCookies(headers.get("set-cookie"))) {
     const name = cookie.split("=")[0]?.trim() || "";
     if (!SESSION_COOKIE.test(name)) continue;
-    const attrs = cookie.toLowerCase();
-    if (!attrs.includes("httponly") || !attrs.includes("secure")) {
+    const attrNames = cookie.split(";").map((part) => part.trim().split("=")[0]?.toLowerCase() || "");
+    if (!attrNames.includes("httponly") || !attrNames.includes("secure")) {
       findings.push({
         severity: "fail",
         check: "cookies",
