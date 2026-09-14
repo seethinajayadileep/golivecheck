@@ -30,12 +30,13 @@ export async function runSuite(
   if (jobs.length === 0) throw new ConfigError("No jobs to run (check --only)");
 
   const needsBrowser = jobs.some((j) => j.type === "e2e" || j.type === "a11y");
-  const browser = needsBrowser ? await chromium.launch({ headless: true }) : null;
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 
   const results: JobResult[] = [];
   let aborted: RunReport["aborted"];
 
   try {
+    if (needsBrowser) browser = await chromium.launch({ headless: true });
     for (const job of jobs) {
       budget.assertWithinLimits();
       const result = await runJob(job, suite.target, scope, budget, browser, options.outputDir);

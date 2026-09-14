@@ -29,7 +29,8 @@ export async function runA11y(
   const context = await browser.newContext({ serviceWorkers: "block" });
   const assertAllowed = await guardContext(context, scope);
   const page = await context.newPage();
-  const timeout = budget ? Math.max(1_000, Math.min(30_000, budget.remainingMs() || 30_000)) : 30_000;
+  budget?.assertWithinLimits();
+  const timeout = budget ? Math.max(1, Math.min(30_000, budget.remainingMs())) : 30_000;
 
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout });
@@ -39,6 +40,7 @@ export async function runA11y(
     const tags = expandTags(job.tags);
     builder.withTags(tags);
     const results = await builder.analyze();
+    budget?.assertWithinLimits();
     const findings: Finding[] = [];
     for (const v of results.violations) {
       const impact = v.impact || "moderate";

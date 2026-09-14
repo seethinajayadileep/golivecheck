@@ -7,7 +7,7 @@ export class ScopeViolationError extends Error {
    * @param allow - Current allowlist.
    */
   constructor(url: string, allow: string[]) {
-    super(`SCOPE_VIOLATION: ${url} is not on the allowlist (${allow.join(", ") || "empty"})`);
+    super(`SCOPE_VIOLATION: ${safeOrigin(url)} is not on the allowlist (${allow.join(", ") || "empty"})`);
     this.name = "ScopeViolationError";
   }
 }
@@ -35,5 +35,18 @@ export class ConfigError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ConfigError";
+  }
+}
+
+/**
+ * Reports only scheme + host + port so reports never include credentials or query.
+ *
+ * @param url - Offending URL, possibly untrusted.
+ */
+function safeOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "(invalid url)";
   }
 }

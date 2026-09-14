@@ -20,20 +20,18 @@ export async function guardContext(
   await context.route("**/*", async (route) => {
     const u = route.request().url();
     if (u.startsWith("data:") || u.startsWith("blob:")) {
-      await route.continue();
+      await route.continue().catch(() => {});
       return;
     }
     try {
       scope.assert(u);
     } catch (err) {
-      if (err instanceof ScopeViolationError) {
-        violation = err;
-        await route.abort("blockedbyclient");
-        return;
-      }
-      throw err;
+      if (!(err instanceof ScopeViolationError)) throw err;
+      violation = err;
+      await route.abort("blockedbyclient").catch(() => {});
+      return;
     }
-    await route.continue();
+    await route.continue().catch(() => {});
   });
   return () => {
     if (violation) throw violation;
