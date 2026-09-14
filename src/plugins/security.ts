@@ -4,11 +4,22 @@ import type { Finding, JobResult, SecurityJob } from "../types.js";
 import { isLocalhost, joinUrl } from "../urls.js";
 
 const SESSION_COOKIE = /^(session|sess|sid|token|auth|jwt)/i;
+const PROBE_ORIGIN = "https://untrusted.example";
+const SENSITIVE_PATHS = ["/.env", "/.git/HEAD"];
 
+/**
+ * Runs read-only header, cookie, CORS, and sensitive-path checks.
+ *
+ * @param job - Security job.
+ * @param target - Suite target URL.
+ * @param scope - Host allowlist.
+ * @param signal - Optional budget abort signal.
+ */
 export async function runSecurity(
   job: SecurityJob,
   target: string,
   scope: Scope,
+  signal?: AbortSignal,
 ): Promise<JobResult> {
   const started = Date.now();
   const findings: Finding[] = [];
@@ -25,7 +36,8 @@ export async function runSecurity(
   }
 
   const res = await scopedFetch(url, scope, {
-    headers: { Origin: "https://untrusted.example" },
+    headers: { Origin: PROBE_ORIGIN },
+    signal,
   });
   const headers = res.headers;
   const html = await res.text();
@@ -49,16 +61,9 @@ export async function runSecurity(
     });
   }
 
-  const xfo = headers.get("x-frame-options");
-  const csp = headers.get("content-security-policy") || "";
-  if (!xfo && !/frame-ancestors/i.test(csp)) {
-    findings.push({
-      severity: "fail",
-      check: "clickjacking",
-      message: "Missing X-Frame-Options and CSP frame-ancestors",
-    });
-  }
+  collectClickjacking(headers, findings);
 
+  const csp = headers.get("content-security-policy") || "";
   if (!csp) {
     findings.push({ severity: "warn", check: "csp", message: "Content-Security-Policy header is missing" });
   }
@@ -76,19 +81,11 @@ export async function runSecurity(
     }
   }
 
-  const acao = headers.get("access-control-allow-origin");
-  const acac = (headers.get("access-control-allow-credentials") || "").toLowerCase() === "true";
-  if (acao === "*" && acac) {
-    findings.push({
-      severity: "fail",
-      check: "cors",
-      message: "CORS allows * with credentials",
-    });
-  }
+  collectCors(headers, findings);
 
-  for (const probe of ["/.env", "/.git/HEAD"]) {
-    const probeUrl = joinUrl(target, probe);
-    const probeRes = await scopedFetch(probeUrl, scope);
+  for (const probe of SENSITIVE_PATHS) {
+    const probeUrl = joinUrl(url, probe);
+    const probeRes = await scopedFetch(probeUrl, scope, { signal });
     if (probeRes.status === 200) {
       findings.push({
         severity: "fail",
@@ -127,6 +124,62 @@ export async function runSecurity(
   };
 }
 
+/**
+ * Fails missing or non-protective X-Frame-Options unless CSP frame-ancestors is set.
+ *
+ * @param headers - Response headers.
+ * @param findings - Findings list to append to.
+ */
+function collectClickjacking(headers: Headers, findings: Finding[]): void {
+  const xfo = (headers.get("x-frame-options") || "").trim();
+  const csp = headers.get("content-security-policy") || "";
+  const hasAncestors = /frame-ancestors/i.test(csp);
+  if (xfo) {
+    const norm = xfo.toUpperCase();
+    if (norm !== "DENY" && norm !== "SAMEORIGIN") {
+      findings.push({
+        severity: "fail",
+        check: "clickjacking",
+        message: `X-Frame-Options ${xfo} is not DENY or SAMEORIGIN`,
+      });
+    }
+    return;
+  }
+  if (!hasAncestors) {
+    findings.push({
+      severity: "fail",
+      check: "clickjacking",
+      message: "Missing X-Frame-Options and CSP frame-ancestors",
+    });
+  }
+}
+
+/**
+ * Fails CORS that reflects the probe origin (or `*`) with credentials.
+ *
+ * @param headers - Response headers.
+ * @param findings - Findings list to append to.
+ */
+function collectCors(headers: Headers, findings: Finding[]): void {
+  const acao = headers.get("access-control-allow-origin");
+  const acac = (headers.get("access-control-allow-credentials") || "").toLowerCase() === "true";
+  if (acac && (acao === "*" || acao === PROBE_ORIGIN)) {
+    findings.push({
+      severity: "fail",
+      check: "cors",
+      message:
+        acao === "*"
+          ? "CORS allows * with credentials"
+          : "CORS reflects the request Origin with credentials",
+    });
+  }
+}
+
+/**
+ * Splits a combined Set-Cookie header when `getSetCookie` is unavailable.
+ *
+ * @param header - Raw header value.
+ */
 function splitCookies(header: string | null): string[] {
   if (!header) return [];
   return header.split(/,(?=\s*[^;]+=)/);
