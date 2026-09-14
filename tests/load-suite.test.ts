@@ -62,6 +62,64 @@ jobs:
     expect(() => loadSuite(file)).toThrow(/Unsupported E2E assertion/);
   });
 
+  it("accepts page-contains E2E assertions", () => {
+    const file = writeSuite(`name: x
+target: http://127.0.0.1:4173
+jobs:
+  - type: e2e
+    name: sign-in
+    startUrl: /login
+    steps:
+      - Fill #email with user
+    assert:
+      - The page contains Signed in
+`);
+    expect(loadSuite(file).jobs[0].assert).toEqual(["The page contains Signed in"]);
+  });
+
+  it("expands ${VAR} in target and steps", () => {
+    process.env.GOLIVECHECK_TARGET = "http://127.0.0.1:4173";
+    process.env.GOLIVECHECK_USER = "shopper";
+    const file = writeSuite(`name: x
+target: \${GOLIVECHECK_TARGET}
+jobs:
+  - type: security
+    name: a
+    url: /
+`);
+    try {
+      expect(loadSuite(file).target).toBe("http://127.0.0.1:4173");
+    } finally {
+      delete process.env.GOLIVECHECK_TARGET;
+      delete process.env.GOLIVECHECK_USER;
+    }
+  });
+
+  it("loads owned.yaml when target and allow env vars are set", () => {
+    process.env.GOLIVECHECK_TARGET = "https://staging.example.com";
+    process.env.GOLIVECHECK_ALLOW = "staging.example.com";
+    try {
+      const suite = loadSuite(path.join(process.cwd(), "examples/suites/owned.yaml"));
+      expect(suite.target).toBe("https://staging.example.com");
+      expect(suite.allow).toEqual(["staging.example.com"]);
+    } finally {
+      delete process.env.GOLIVECHECK_TARGET;
+      delete process.env.GOLIVECHECK_ALLOW;
+    }
+  });
+
+  it("fails when a referenced env var is missing", () => {
+    delete process.env.GOLIVECHECK_TARGET;
+    const file = writeSuite(`name: x
+target: \${GOLIVECHECK_TARGET}
+jobs:
+  - type: security
+    name: a
+    url: /
+`);
+    expect(() => loadSuite(file)).toThrow(/Missing environment variable GOLIVECHECK_TARGET/);
+  });
+
   it("rejects API jobs with no requests", () => {
     const file = writeSuite(`name: x
 target: http://127.0.0.1:4173

@@ -42,7 +42,7 @@ npx golivecheck-agent report
 
 Or MCP tools:
 
-- `run_suite` — `{ target, suitePath?, types? }`
+- `run_suite` — `{ target, allow, suitePath?, types? }` (`target` and `allow` required)
 - `get_last_report` — summary + `output/report.html` / `report.json` paths
 - `list_findings` — `{ severity? }`
 

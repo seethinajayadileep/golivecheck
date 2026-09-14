@@ -1,0 +1,21 @@
+name: my-suite
+# Default is the local demo. For a host you own, set --target/--allow
+# or use examples/suites/owned.yaml with GOLIVECHECK_TARGET / GOLIVECHECK_ALLOW.
+target: http://127.0.0.1:4173
+allow:
+  - 127.0.0.1
+budget:
+  maxMinutes: 8
+  maxLlmCalls: 15
+jobs:
+  - type: security
+    name: baseline
+    url: /
+  - type: a11y
+    name: home
+    url: /
+    tags: [wcag2aa]
+  - type: api
+    name: health
+    requests:
+      - { method: GET, path: /, expectStatus: 200 }

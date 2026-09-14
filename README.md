@@ -50,9 +50,58 @@ npx tsx src/cli.ts report
 
 ---
 
+## Point it at a site you own
+
+Copy `.env.example`. Set `GOLIVECHECK_TARGET` / `GOLIVECHECK_ALLOW` to **your** staging host. Cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
+
+```bash
+export GOLIVECHECK_TARGET=https://staging.example.com
+export GOLIVECHECK_ALLOW=staging.example.com
+npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/owned.yaml
+```
+
+Suite strings may contain `${VAR}`. Missing vars fail the run. Do not scan hosts you do not own.
+
+---
+
+## GitHub Action (other apps)
+
+Cheap PR gate — API, a11y, security; **no secrets required** beyond the target you own. Copy [examples/github/golivecheck.yml](./examples/github/golivecheck.yml):
+
+```yaml
+- uses: seethinajayadileep/golivecheck@main
+  with:
+    target: https://staging.example.com
+    allow: staging.example.com
+    only: security,a11y,api
+```
+
+`target` and `allow` are required. Default `only` is `security,a11y,api`.
+
+---
+
+## Cursor / MCP
+
+From this repo (or set `cwd` to the clone):
+
+```json
+{
+  "mcpServers": {
+    "golivecheck": {
+      "command": "npx",
+      "args": ["tsx", "src/cli.ts", "mcp"]
+    }
+  }
+}
+```
+
+Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `run_suite` (requires `target` + `allow`), `get_last_report`, `list_findings`.
+
+---
+
 ## Status
 
-Phase 1 v0 is implemented in this repo (demo shop, four plugins, report, CLI, Action, MCP).
+Phase 1 v0 is on `main`. Phase 2: env-based target/login, Action example, Cursor MCP snippet.
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)

@@ -9,7 +9,7 @@ You are working **inside this project**. Follow `IDEA.md` first, then [ROADMAP.m
 GoLiveCheck is a testing agent. One YAML suite runs four job types:
 
 | Type | Engine | Needs LLM? |
-|---|---|---|
+|---|---|
 | `e2e` | Playwright + optional LLM | Optional |
 | `api` | HTTP `fetch` | No |
 | `a11y` | axe-core in the page | No |
@@ -121,6 +121,10 @@ jobs:
     name: baseline
     url: /
 ```
+
+`${VAR}` in any suite string expands from the environment (`GOLIVECHECK_TARGET`, `GOLIVECHECK_USER`, `GOLIVECHECK_PASSWORD`). Missing vars fail the run.
+
+E2E assertions: `The cart is not empty` or `The page contains …`. Fill/Click/Open/Wait/Press steps run without an LLM. Quote CSS `#ids` in YAML so `#` is not a comment.
 
 ---
 
