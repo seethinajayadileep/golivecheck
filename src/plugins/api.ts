@@ -73,7 +73,7 @@ export async function runApi(
  * @param path - Path expression.
  */
 function hasJsonPath(body: unknown, path: string): boolean {
-  const parts = path.replace(/^\$?\.?/, "").split(".").filter(Boolean);
+  const parts = path.replace(/^\$\.?/, "").split(".").filter(Boolean);
   let cur: unknown = body;
   for (const part of parts) {
     if (cur == null || typeof cur !== "object") return false;
