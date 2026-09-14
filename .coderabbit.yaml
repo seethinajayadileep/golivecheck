@@ -1,0 +1,43 @@
+# CodeRabbit — auto-review on PRs targeting main (and drafts).
+# The GitHub App must still be installed on this repository.
+# Docs: https://docs.coderabbit.ai/configuration/auto-review
+
+language: en-US
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  changed_files_summary: true
+  path_filters:
+    - "!**/*.lock"
+    - "!**/dist/**"
+    - "!**/node_modules/**"
+    - "!**/coverage/**"
+  path_instructions:
+    - path: "src/plugins/security.ts"
+      instructions: |
+        Security must stay read-only. Flag any exploit payloads, scanners,
+        or off-domain requests. Checks are headers, cookies, CORS, and
+        sensitive-path existence only.
+    - path: "src/scope.ts"
+      instructions: |
+        Allowlist must be enforced on every navigation and HTTP call.
+        Off-domain must hard-fail. Do not suggest removing the lock.
+    - path: "*.md"
+      instructions: |
+        Spec files (IDEA.md, AGENTS.md, PRODUCT.md) are the product contract.
+        Do not suggest expanding into pentest, mobile, or SaaS.
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: true
+    ignore_title_keywords:
+      - "[skip review]"
+    labels:
+      - "!do-not-review"
+
+chat:
+  auto_reply: true
