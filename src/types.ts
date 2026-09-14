@@ -1,3 +1,4 @@
+/** One of the four GoLiveCheck job kinds. */
 export type JobType = "e2e" | "api" | "a11y" | "security";
 
 export type FindingSeverity = "fail" | "warn" | "info";
