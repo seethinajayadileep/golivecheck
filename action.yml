@@ -26,7 +26,7 @@ runs:
         node-version: "22"
     - shell: bash
       working-directory: ${{ github.action_path }}
-      run: npm install && npx playwright install --with-deps chromium
+      run: npm ci && npx playwright install --with-deps chromium
     - shell: bash
       working-directory: ${{ github.workspace }}
       env:
