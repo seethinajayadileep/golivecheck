@@ -1,0 +1,27 @@
+name: demo-shop
+target: http://127.0.0.1:4173
+allow:
+  - 127.0.0.1
+budget:
+  maxMinutes: 8
+  maxLlmCalls: 15
+jobs:
+  - type: e2e
+    name: buy-one-item
+    startUrl: /
+    steps:
+      - Open the first product
+      - Add it to the cart
+    assert:
+      - The cart is not empty
+  - type: api
+    name: products-api
+    requests:
+      - { method: GET, path: /api/products, expectStatus: 200 }
+  - type: a11y
+    name: home
+    url: /
+    tags: [wcag2aa]
+  - type: security
+    name: baseline
+    url: /

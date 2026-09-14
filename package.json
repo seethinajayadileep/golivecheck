@@ -1,0 +1,38 @@
+{
+  "name": "golivecheck-agent",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Testing agent: E2E, API, accessibility, and safe security — allowlisted and read-only.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "golivecheck": "./dist/cli.js",
+    "golivecheck-agent": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "action.yml"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "demo": "node scripts/demo.mjs",
+    "start:demo": "node examples/demo-site/server.mjs",
+    "test": "vitest run",
+    "golivecheck": "tsx src/cli.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "playwright": "^1.55.0",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

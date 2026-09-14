@@ -15,20 +15,48 @@ Then it writes **one report**: pass / fail and what to fix.
 
 ---
 
+## Two-minute demo
+
+```bash
+npm install
+npx playwright install chromium
+npm test                 # no OPENAI_API_KEY required
+npm run demo             # demo shop + all four jobs → output/report.html
+npm run start:demo       # keep this running in another terminal (port 4173)
+npx tsx src/cli.ts run --only security,a11y --config examples/suites/shop.yaml
+npx tsx src/cli.ts report
+```
+
+After `npm run build`:
+
+```bash
+npx golivecheck run --config examples/suites/shop.yaml
+npx golivecheck init
+npx golivecheck mcp
+```
+
+---
+
+## CLI
+
+```bash
+npx tsx src/cli.ts init
+npx tsx src/cli.ts run --config golivecheck.config.yaml
+npx tsx src/cli.ts run --only security,a11y,api
+npx tsx src/cli.ts report
+```
+
+`--only security,a11y,api` works with **no** LLM key.
+
+---
+
 ## Status
 
-Spec first. Application code is not in this repo yet.
+Phase 1 v0 is implemented in this repo (demo shop, four plugins, report, CLI, Action, MCP).
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)
 - Product walls: [IDEA.md](./IDEA.md)
-
-```bash
-# v0 (planned)
-npx golivecheck-agent run
-npx golivecheck-agent run --only security,a11y
-npx golivecheck-agent report
-```
 
 ---
 
@@ -49,9 +77,7 @@ Do not invent extra product scope. If IDEA.md and the user disagree, **ask** —
 
 ## CodeRabbit auto review
 
-Config lives in [`.coderabbit.yaml`](./.coderabbit.yaml) (`reviews.auto_review.enabled: true`).
-
-Public repo with under 10 stars: comment `@coderabbitai review` on each PR. Setup: [CODERABBIT.md](./CODERABBIT.md).
+Config lives in [`.coderabbit.yaml`](./.coderabbit.yaml). Public repo with under 10 stars: comment `@coderabbitai review`. Setup: [CODERABBIT.md](./CODERABBIT.md).
 
 ---
 

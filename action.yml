@@ -1,0 +1,48 @@
+name: GoLiveCheck
+description: Run GoLiveCheck (API, accessibility, safe security; optional E2E) on a site you own.
+author: JAYA DILEEP
+branding:
+  color: green
+inputs:
+  target:
+    description: Target URL you own (required).
+    required: true
+  allow:
+    description: Comma-separated allowlist hosts.
+    required: true
+  config:
+    description: Path to the suite YAML.
+    required: false
+    default: golivecheck.config.yaml
+  only:
+    description: Job types to run.
+    required: false
+    default: security,a11y,api
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+    - shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci && npx playwright install --with-deps chromium
+    - shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_ALLOW: ${{ inputs.allow }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_ONLY: ${{ inputs.only }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        if [ -z "${INPUT_TARGET}" ] || [ -z "${INPUT_ALLOW}" ]; then
+          echo "target and allow are required"
+          exit 2
+        fi
+        npx --prefix "$ACTION_PATH" tsx "$ACTION_PATH/src/cli.ts" run \
+          --config "${INPUT_CONFIG}" \
+          --target "${INPUT_TARGET}" \
+          --allow "${INPUT_ALLOW}" \
+          --only "${INPUT_ONLY}"
