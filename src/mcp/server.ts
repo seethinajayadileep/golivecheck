@@ -77,28 +77,49 @@ export async function startMcpServer(): Promise<void> {
 
   process.stdin.resume();
   let buffer = Buffer.alloc(0);
-  process.stdin.on("data", async (chunk: Buffer | string) => {
-    buffer = Buffer.concat([buffer, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)]);
-    while (true) {
-      const extracted = extractMessage();
-      if (!extracted) break;
-      let id: JsonRpc["id"] = null;
-      try {
-        const parsed = JSON.parse(extracted) as JsonRpc;
-        id = parsed.id ?? null;
-        const reply = await handle(parsed);
-        if (reply) writeMessage(JSON.stringify(reply));
-      } catch (err) {
-        writeMessage(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id,
-            error: { code: -32603, message: (err as Error).message || "Internal error" },
-          }),
-        );
-      }
-    }
+  const chunks: Buffer[] = [];
+  let draining = false;
+
+  process.stdin.on("data", (chunk: Buffer | string) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    void drain();
   });
+
+  /**
+   * Processes stdin chunks in order so concurrent `run_suite` calls cannot
+   * overwrite the same output directory.
+   */
+  async function drain(): Promise<void> {
+    if (draining) return;
+    draining = true;
+    try {
+      while (chunks.length) {
+        buffer = Buffer.concat([buffer, chunks.shift()!]);
+        while (true) {
+          const extracted = extractMessage();
+          if (!extracted) break;
+          let id: JsonRpc["id"] = null;
+          try {
+            const parsed = JSON.parse(extracted) as JsonRpc;
+            id = parsed.id ?? null;
+            const reply = await handle(parsed);
+            if (reply) writeMessage(JSON.stringify(reply));
+          } catch (err) {
+            writeMessage(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                id,
+                error: { code: -32603, message: (err as Error).message || "Internal error" },
+              }),
+            );
+          }
+        }
+      }
+    } finally {
+      draining = false;
+      if (chunks.length) void drain();
+    }
+  }
 
   /**
    * Splits one newline-delimited JSON object or Content-Length framed body.

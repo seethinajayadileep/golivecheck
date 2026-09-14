@@ -26,9 +26,8 @@ export async function completeJson(prompt: string, signal?: AbortSignal): Promis
   if (!key) throw new Error("OPENAI_API_KEY is not set");
   const timeout = AbortSignal.timeout(30_000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  let res: Response;
   try {
-    res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -49,6 +48,11 @@ export async function completeJson(prompt: string, signal?: AbortSignal): Promis
         ],
       }),
     });
+    if (!res.ok) {
+      throw new Error(`LLM HTTP ${res.status}: ${await res.text()}`);
+    }
+    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return body.choices?.[0]?.message?.content || "{}";
   } catch (err) {
     if (signal?.aborted) {
       throw new BudgetExceededError("LLM call aborted by budget");
@@ -58,11 +62,6 @@ export async function completeJson(prompt: string, signal?: AbortSignal): Promis
     }
     throw err;
   }
-  if (!res.ok) {
-    throw new Error(`LLM HTTP ${res.status}: ${await res.text()}`);
-  }
-  const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return body.choices?.[0]?.message?.content || "{}";
 }
 
 /**
