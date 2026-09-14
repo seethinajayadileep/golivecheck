@@ -8,7 +8,8 @@ import type { FindingSeverity, RunReport } from "../types.js";
 type JsonRpc = { jsonrpc: "2.0"; id?: number | string | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown };
 
 /**
- * Serves GoLiveCheck tools over MCP stdio until stdin closes.
+ * Serves GoLiveCheck tools over MCP stdio until stdin closes and in-flight
+ * messages finish writing their replies.
  *
  * Parse and tool failures become JSON-RPC errors; the listener stays alive.
  */
@@ -78,11 +79,11 @@ export async function startMcpServer(): Promise<void> {
   process.stdin.resume();
   let buffer = Buffer.alloc(0);
   const chunks: Buffer[] = [];
-  let draining = false;
+  let activeDrain: Promise<void> | undefined;
 
   process.stdin.on("data", (chunk: Buffer | string) => {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    void drain();
+    activeDrain ??= drain();
   });
 
   /**
@@ -90,15 +91,12 @@ export async function startMcpServer(): Promise<void> {
    * overwrite the same output directory.
    */
   async function drain(): Promise<void> {
-    if (draining) return;
-    draining = true;
     try {
       while (chunks.length) {
         buffer = Buffer.concat([buffer, chunks.shift()!]);
         while (true) {
           const extracted = extractMessage();
           if (!extracted) break;
-          let id: JsonRpc["id"] = null;
           let parsed: unknown;
           try {
             parsed = JSON.parse(extracted);
@@ -123,15 +121,16 @@ export async function startMcpServer(): Promise<void> {
             );
             continue;
           }
-          id = request.id ?? null;
+          const notify = request.id === undefined;
           try {
             const reply = await handle(request);
-            if (reply) writeMessage(JSON.stringify(reply));
+            if (reply && !notify) writeMessage(JSON.stringify(reply));
           } catch (err) {
+            if (notify) continue;
             writeMessage(
               JSON.stringify({
                 jsonrpc: "2.0",
-                id,
+                id: request.id,
                 error: { code: -32603, message: (err as Error).message || "Internal error" },
               }),
             );
@@ -139,8 +138,11 @@ export async function startMcpServer(): Promise<void> {
         }
       }
     } finally {
-      draining = false;
-      if (chunks.length) void drain();
+      if (chunks.length) {
+        await drain();
+      } else {
+        activeDrain = undefined;
+      }
     }
   }
 
@@ -176,9 +178,11 @@ export async function startMcpServer(): Promise<void> {
   }
 
   await new Promise<void>((resolve) => {
-    process.stdin.on("end", resolve);
-    process.stdin.on("close", resolve);
+    const finish = () => resolve();
+    process.stdin.on("end", finish);
+    process.stdin.on("close", finish);
   });
+  if (activeDrain) await activeDrain;
 }
 
 /**
