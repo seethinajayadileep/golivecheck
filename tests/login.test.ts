@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { startDemoShop } from "../examples/demo-site/server.mjs";
-import { parseScriptableSteps } from "../src/plugins/e2e.js";
+import { parseScriptableSteps } from "../src/plugins/e2e-script.js";
 import { runSuite } from "../src/orchestrator.js";
 
 describe("scriptable e2e login", () => {
@@ -79,12 +79,6 @@ jobs:
   });
 });
 
-/**
- * Restores or deletes a process env key.
- *
- * @param name - Env var name.
- * @param value - Previous value, or undefined if it was unset.
- */
 function restore(name: string, value: string | undefined): void {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;
