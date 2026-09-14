@@ -13,7 +13,8 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 |---|---|
 | Product spec | Done (`IDEA`, `AGENTS`, `SKILL`, `PRODUCT`, `PLAN`) |
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
-| Application code | **Not started** |
+| Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
+| Next | Add `.github/workflows/ci.yml` so `npm test` / `npm run demo` run on every PR with no secrets, then Phase 2 |
 
 ---
 
@@ -33,15 +34,15 @@ Goal: `npm run demo` writes `output/report.html` with **all four** job types.
 
 Build in this order (same as [PLAN.md](./PLAN.md)):
 
-1. `package.json`, TypeScript, Playwright, tiny demo shop
-2. YAML loader + orchestrator
-3. **security + a11y + api** (no LLM key)
-4. E2E English → Playwright (LLM optional; saved-script fallback)
-5. Allowlist + budget cap
-6. HTML + JSON + JUnit report
-7. CLI: `init` / `run` / `report`
-8. GitHub Action + MCP (`run_suite`, `get_last_report`, `list_findings`)
-9. Unit tests; CI green without secrets
+1. [x] `package.json`, TypeScript, Playwright, tiny demo shop
+2. [x] YAML loader + orchestrator
+3. [x] **security + a11y + api** (no LLM key)
+4. [x] E2E English → Playwright (LLM optional; saved-script fallback)
+5. [x] Allowlist + budget cap
+6. [x] HTML + JSON + JUnit report
+7. [x] CLI: `init` / `run` / `report`
+8. [x] GitHub Action + MCP (`run_suite`, `get_last_report`, `list_findings`)
+9. [ ] Unit tests exist; **add `.github/workflows/ci.yml`** (`npm test` + `npm run demo`, no secrets)
 
 **Cut if needed:** MCP, then video. **Never cut** security / a11y / API.
 
