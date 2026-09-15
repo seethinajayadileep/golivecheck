@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: seethinajayadileep/golivecheck@main
+      - uses: seethinajayadileep/golivecheck@v1
         with:
           target: https://www.seethinajayadileep.dev
           allow: www.seethinajayadileep.dev
