@@ -1,6 +1,7 @@
 name: my-suite
-# Default is the local demo. For a host you own, set --target/--allow
-# or use examples/suites/owned.yaml with GOLIVECHECK_TARGET / GOLIVECHECK_ALLOW.
+# Default is the local demo so CI and `npm run demo` stay off the live host.
+# Phase 2 owned host: examples/suites/www.yaml (https://www.seethinajayadileep.dev).
+# Or set --target/--allow / GOLIVECHECK_TARGET + GOLIVECHECK_ALLOW.
 target: http://127.0.0.1:4173
 allow:
   - 127.0.0.1
