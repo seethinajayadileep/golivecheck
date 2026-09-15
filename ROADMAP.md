@@ -13,9 +13,9 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 |---|---|
 | Product spec | Done (`IDEA`, `AGENTS`, `SKILL`, `PRODUCT`, `PLAN`) |
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
-| Application code | **Phase 3 replay** on branch `phase3-replay` |
-| CI | **Green** locally — `npm test` (34) + `npm run demo` |
-| Next | Phase 4 — publish (`npx golivecheck-agent init` in an empty folder) |
+| Application code | **Phase 4 publish** on branch `phase4-publish` |
+| CI | **Green** locally — `npm test` + `npm run demo` |
+| Next | Tag `v1` + `npm publish` (needs npm login; see `examples/github/publish.md`) |
 
 ---
 
@@ -90,14 +90,14 @@ Goal: AI once, deterministic after.
 
 ---
 
-## Phase 4 — Publish
+## Phase 4 — Publish (required done)
 
-- npm package `golivecheck-agent`
-- GitHub Action on Marketplace (or `uses: seethinajayadileep/golivecheck@v1`)
-- Short demo GIF / 60s clip in README
-- `SKILL.md` install notes for Claude / Cursor
+- [x] npm package `golivecheck-agent` (version `1.0.0`, public; `npx golivecheck-agent init` from packed bin)
+- [x] GitHub Action pin `uses: seethinajayadileep/golivecheck@v1` (create the `v1` tag after merge — [examples/github/publish.md](./examples/github/publish.md))
+- [x] Short demo clip in README (`docs/demo.svg` — screenshot of `npm run demo`)
+- [x] `SKILL.md` install notes for Claude / Cursor
 
-**Exit:** `npx golivecheck-agent init` works in an empty folder.
+**Exit:** `npx golivecheck-agent init` works in an empty folder (verified from `npm pack`).
 
 ---
 
