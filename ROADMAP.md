@@ -15,7 +15,7 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
 | Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
 | CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 2 — enable the workflow on [portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1) |
+| Next | Phase 2 — consumer-app PR gate on test.seethinajayadileep.dev |
 
 ---
 
@@ -63,14 +63,14 @@ npx golivecheck-agent run --only security,a11y   # works with no OPENAI_API_KEY
 Goal: one real staging URL + CI + another AI can call us.
 
 - [x] `${VAR}` in suite YAML (target / login) — `GOLIVECHECK_TARGET`, `GOLIVECHECK_USER`, `GOLIVECHECK_PASSWORD`
-- [x] Point a suite at an owned host — `examples/suites/www.yaml` (`https://www.seethinajayadileep.dev`). Default `golivecheck.config.yaml` stays localhost so CI/demo do not hit the live site
+- [x] Point a suite at an owned host — `examples/suites/test.yaml` (`https://test.seethinajayadileep.dev`). `www` is the live site and is not the Phase 2 host. Default `golivecheck.config.yaml` stays localhost so CI/demo do not hit a live host
 - [x] Env vars for test login (Fill/Click steps, no LLM)
 - [x] GitHub Action example for PRs (`--only security,a11y,api` by default)
 - [x] MCP + Cursor snippet in README
-- [x] First real-site run: no flake and no false header/a11y; remaining fails are real (missing nosniff / frame headers; html lang, link names, svg alt)
+- [x] First real-site run on `test.seethinajayadileep.dev`: security failed (missing XFO / CSP `frame-ancestors`); run aborted with `SCOPE_VIOLATION` because the page loads `ap.emergent.sh` (not allowlisted). Not a false positive.
 - [x] Consumer-app PR opened: [seethinajayadileep/portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1)
 
-**Still open:** copy `.github/golivecheck.yml` → `.github/workflows/golivecheck.yml` on that PR (this App cannot write workflow files). After that, the PR fails while a11y/security are red.
+**Still open:** copy `.github/golivecheck.yml` → `.github/workflows/golivecheck.yml` on that PR (this App cannot write workflow files). After that, the PR fails while the cheap gate is red.
 
 **Exit:** a PR on that app fails when a11y/security/API is red; Cursor can `run_suite`.
 
