@@ -6,6 +6,12 @@ import { startDemoShop } from "../examples/demo-site/server.mjs";
 import { runSuite } from "../src/orchestrator.js";
 import { emitPlaywrightSpec, loadReplay, writeReplay } from "../src/replay.js";
 
+const BUY_FLOW = {
+  startUrl: "/",
+  steps: ["Open the first product", "Add it to the cart"],
+  assert: ["The cart is not empty"],
+};
+
 describe("replay", () => {
   const previousKey = process.env.OPENAI_API_KEY;
 
@@ -18,15 +24,37 @@ describe("replay", () => {
     const spec = emitPlaywrightSpec({
       job: "buy-one-item",
       startUrl: "/",
-      assert: ["The cart is not empty"],
+      steps: BUY_FLOW.steps,
+      assert: BUY_FLOW.assert,
+      allow: ["127.0.0.1"],
       actions: [
         { op: "click", selector: ".product-link" },
-        { op: "click", selector: "#add-to-cart" },
+        { op: "click", selector: "button Add to cart" },
+        { op: "screenshot", name: "../../source" },
       ],
     });
+    expect(spec).toContain('from "playwright/test"');
+    expect(spec).not.toContain("@playwright/test");
     expect(spec).toContain('test("buy-one-item"');
     expect(spec).toContain('page.locator(".product-link")');
+    expect(spec).toContain('page.getByRole("button"');
+    expect(spec).toContain('const allow = ["127.0.0.1"]');
+    expect(spec).toContain("blockedbyclient");
+    expect(spec).toContain("source.png");
+    expect(spec).not.toContain("../../source.png");
     expect(spec).toContain("#cart-items li");
+  });
+
+  it("ignores a replay when startUrl, steps, or assert changed", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "glc-replay-fp-"));
+    writeReplay(dir, "buy-one-item", "/", BUY_FLOW.assert, [{ op: "click", selector: ".product-link" }], {
+      steps: BUY_FLOW.steps,
+      allow: ["127.0.0.1"],
+    });
+    expect(loadReplay(dir, "buy-one-item", BUY_FLOW)?.actions).toHaveLength(1);
+    expect(loadReplay(dir, "buy-one-item", { ...BUY_FLOW, startUrl: "/sale" })).toBeNull();
+    expect(loadReplay(dir, "buy-one-item", { ...BUY_FLOW, steps: ["Do something else"] })).toBeNull();
+    expect(loadReplay(dir, "buy-one-item", { ...BUY_FLOW, assert: ["The page contains Done"] })).toBeNull();
   });
 
   it("writes replay JSON and spec after a successful demo E2E", async () => {
@@ -68,11 +96,18 @@ jobs:
     const shop = await startDemoShop(0);
     const dir = mkdtempSync(path.join(tmpdir(), "glc-replay-run-"));
     const outputDir = path.join(dir, "output");
-    writeReplay(outputDir, "add-from-replay", "/", ["The cart is not empty"], [
-      { op: "click", selector: ".product-link" },
-      { op: "click", selector: "#add-to-cart" },
-    ]);
-    expect(loadReplay(outputDir, "add-from-replay")?.actions).toHaveLength(2);
+    writeReplay(
+      outputDir,
+      "add-from-replay",
+      "/",
+      ["The cart is not empty"],
+      [
+        { op: "click", selector: ".product-link" },
+        { op: "click", selector: "#add-to-cart" },
+      ],
+      { steps: BUY_FLOW.steps, allow: ["127.0.0.1"] },
+    );
+    expect(loadReplay(outputDir, "add-from-replay", BUY_FLOW)?.actions).toHaveLength(2);
     const suitePath = path.join(dir, "suite.yaml");
     writeFileSync(
       suitePath,

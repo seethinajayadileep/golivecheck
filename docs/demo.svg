@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="520" viewBox="0 0 880 520" role="img" aria-label="GoLiveCheck demo report: e2e, api, a11y, and security passed">
+  <title>GoLiveCheck demo report</title>
+  <rect width="880" height="520" fill="#fff"/>
+  <text x="32" y="48" font-family="system-ui,sans-serif" font-size="28" font-weight="700" fill="#222">GoLiveCheck report</text>
+  <text x="32" y="76" font-family="system-ui,sans-serif" font-size="15" fill="#444">demo-shop → http://127.0.0.1:4173</text>
+  <line x1="32" y1="96" x2="848" y2="96" stroke="#ddd"/>
+  <text x="32" y="136" font-family="system-ui,sans-serif" font-size="20" font-weight="700"><tspan fill="#222">e2e · buy-one-item </tspan><tspan fill="#0a6">passed</tspan></text>
+  <text x="32" y="160" font-family="system-ui,sans-serif" font-size="14" fill="#222">215 ms</text>
+  <text x="48" y="184" font-family="system-ui,sans-serif" font-size="14" fill="#555">info replay — used saved actions for "buy-one-item" (no LLM)</text>
+  <line x1="32" y1="208" x2="848" y2="208" stroke="#ddd"/>
+  <text x="32" y="248" font-family="system-ui,sans-serif" font-size="20" font-weight="700"><tspan fill="#222">api · products-api </tspan><tspan fill="#0a6">passed</tspan></text>
+  <text x="32" y="272" font-family="system-ui,sans-serif" font-size="14" fill="#222">8 ms · No findings</text>
+  <line x1="32" y1="296" x2="848" y2="296" stroke="#ddd"/>
+  <text x="32" y="336" font-family="system-ui,sans-serif" font-size="20" font-weight="700"><tspan fill="#222">a11y · home </tspan><tspan fill="#0a6">passed</tspan></text>
+  <text x="32" y="360" font-family="system-ui,sans-serif" font-size="14" fill="#222">314 ms · No findings</text>
+  <line x1="32" y1="384" x2="848" y2="384" stroke="#ddd"/>
+  <text x="32" y="424" font-family="system-ui,sans-serif" font-size="20" font-weight="700"><tspan fill="#222">security · baseline </tspan><tspan fill="#0a6">passed</tspan></text>
+  <text x="32" y="448" font-family="system-ui,sans-serif" font-size="14" fill="#222">6 ms</text>
+  <text x="48" y="472" font-family="system-ui,sans-serif" font-size="14" fill="#a60">warn hsts — HSTS is not set (expected on HTTPS; skipped as fail on HTTP)</text>
+</svg>

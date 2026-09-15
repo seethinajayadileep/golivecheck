@@ -1,25 +1,46 @@
 {
   "name": "golivecheck-agent",
-  "version": "0.0.1",
-  "private": true,
+  "version": "1.0.0",
   "description": "Testing agent: E2E, API, accessibility, and safe security — allowlisted and read-only.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seethinajayadileep/golivecheck.git"
+  },
+  "homepage": "https://github.com/seethinajayadileep/golivecheck#readme",
+  "bugs": {
+    "url": "https://github.com/seethinajayadileep/golivecheck/issues"
+  },
+  "keywords": [
+    "testing",
+    "playwright",
+    "accessibility",
+    "security",
+    "mcp",
+    "e2e"
+  ],
   "bin": {
-    "golivecheck": "./dist/cli.js",
-    "golivecheck-agent": "./dist/cli.js"
+    "golivecheck": "dist/cli.js",
+    "golivecheck-agent": "dist/cli.js"
   },
   "files": [
     "dist",
     "examples",
-    "action.yml"
+    "action.yml",
+    "SKILL.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "demo": "node scripts/demo.mjs",
     "start:demo": "node examples/demo-site/server.mjs",
     "test": "vitest run",
     "golivecheck": "tsx src/cli.ts"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=20"

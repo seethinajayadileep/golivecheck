@@ -13,9 +13,32 @@ Then it writes **one report**: pass / fail and what to fix.
 
 **Only scan systems you own or have permission to test.**
 
+![Demo report](docs/demo.svg)
+
 ---
 
-## Two-minute demo
+## Empty folder (Phase 4)
+
+```bash
+npx golivecheck-agent init
+npx playwright install chromium
+npx golivecheck-agent run --only security,a11y,api
+npx golivecheck-agent report
+```
+
+`init` writes `golivecheck.config.yaml` pointed at localhost. Change `target` / `allow` to a host you own before a live run.
+
+Until the package is on npm, from a clone:
+
+```bash
+npm install
+npm run build
+npx golivecheck-agent init
+```
+
+---
+
+## Two-minute demo (this repo)
 
 ```bash
 npm install
@@ -27,23 +50,15 @@ npx tsx src/cli.ts run --only security,a11y --config examples/suites/shop.yaml
 npx tsx src/cli.ts report
 ```
 
-After `npm run build`:
-
-```bash
-npx golivecheck run --config examples/suites/shop.yaml
-npx golivecheck init
-npx golivecheck mcp
-```
-
 ---
 
 ## CLI
 
 ```bash
-npx tsx src/cli.ts init
-npx tsx src/cli.ts run --config golivecheck.config.yaml
-npx tsx src/cli.ts run --only security,a11y,api
-npx tsx src/cli.ts report
+npx golivecheck-agent init
+npx golivecheck-agent run --config golivecheck.config.yaml
+npx golivecheck-agent run --only security,a11y,api
+npx golivecheck-agent report
 ```
 
 `--only security,a11y,api` works with **no** LLM key.
@@ -52,14 +67,14 @@ npx tsx src/cli.ts report
 
 ## Point it at a site you own
 
-Copy `.env.example`. The Phase 2 owned host is the live website: [examples/suites/www.yaml](./examples/suites/www.yaml). Env-based cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
+Copy `.env.example`. The owned host is the live website: [examples/suites/www.yaml](./examples/suites/www.yaml). Env-based cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
 
 ```bash
-npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/www.yaml
+npx golivecheck-agent run --only security,a11y,api --config examples/suites/www.yaml
 # or
 export GOLIVECHECK_TARGET=https://www.seethinajayadileep.dev
 export GOLIVECHECK_ALLOW=www.seethinajayadileep.dev
-npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/owned.yaml
+npx golivecheck-agent run --only security,a11y,api --config examples/suites/owned.yaml
 ```
 
 Suite strings may contain `${VAR}`. Missing vars fail the run. Do not scan hosts you do not own.
@@ -68,10 +83,10 @@ Suite strings may contain `${VAR}`. Missing vars fail the run. Do not scan hosts
 
 ## GitHub Action (other apps)
 
-Cheap PR gate — API, a11y, security; **no secrets required** beyond the target you own. Copy [examples/github/golivecheck.yml](./examples/github/golivecheck.yml):
+Cheap PR gate — API, a11y, security; **no secrets required** beyond the target you own. Copy [examples/github/golivecheck.yml](./examples/github/golivecheck.yml). Pin `@v1` after the first release tag (see [examples/github/publish.md](./examples/github/publish.md)):
 
 ```yaml
-- uses: seethinajayadileep/golivecheck@main
+- uses: seethinajayadileep/golivecheck@v1
   with:
     target: https://www.seethinajayadileep.dev
     allow: www.seethinajayadileep.dev
@@ -84,26 +99,26 @@ Cheap PR gate — API, a11y, security; **no secrets required** beyond the target
 
 ## Cursor / MCP
 
-From this repo (or set `cwd` to the clone):
+After npm publish (or `npx -y golivecheck-agent`):
 
 ```json
 {
   "mcpServers": {
     "golivecheck": {
       "command": "npx",
-      "args": ["--no-install", "tsx", "src/cli.ts", "mcp"]
+      "args": ["-y", "golivecheck-agent", "mcp"]
     }
   }
 }
 ```
 
-Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `run_suite` (requires `target` + `allow`), `get_last_report`, `list_findings`.
+From a clone of this repo: [examples/cursor-mcp.local.json](./examples/cursor-mcp.local.json). Tools: `run_suite` (requires `target` + `allow`), `get_last_report`, `list_findings`.
 
 ---
 
 ## Status
 
-Phase 2 is on `main`. Phase 3: after a passing E2E job, GoLiveCheck writes `output/replay/<job>.json` and `output/replay/<job>.spec.ts`. The next run of that job uses the JSON and skips the LLM.
+Phase 3 replay is on `main`. Phase 4: `npx golivecheck-agent init` in an empty folder; GitHub Action pin `@v1`; skill install notes in [SKILL.md](./SKILL.md).
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)
