@@ -40,6 +40,17 @@ npx golivecheck-agent run --only security,a11y,api
 npx golivecheck-agent report
 ```
 
+Until the package is on npm, from a clone of this repo:
+
+```bash
+npm install
+npm run build
+node dist/cli.js init
+npx playwright install chromium
+node dist/cli.js run --only security,a11y,api
+node dist/cli.js report
+```
+
 Claude: keep this `SKILL.md` in the project (or the user's skills folder).
 
 Cursor MCP (published package): [examples/cursor-mcp.json](./examples/cursor-mcp.json) — `npx -y golivecheck-agent mcp`. From a clone of this repo: [examples/cursor-mcp.local.json](./examples/cursor-mcp.local.json).

@@ -121,7 +121,7 @@ From a clone of this repo: [examples/cursor-mcp.local.json](./examples/cursor-mc
 
 ## Status
 
-Phase 4 is on `main`. Until `npm publish`, from a clone use `node dist/cli.js init`. Tag `@v1` and publish with [examples/github/publish.md](./examples/github/publish.md). Skill notes: [SKILL.md](./SKILL.md).
+Phase 4 is on `main`. Until `npm publish`, from a clone use `node dist/cli.js init`. Create and push tags `v1.0.0` and `v1`; publish with [examples/github/publish.md](./examples/github/publish.md). Skill notes: [SKILL.md](./SKILL.md).
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)
