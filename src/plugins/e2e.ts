@@ -52,7 +52,11 @@ export async function runE2e(
     budget.assertWithinLimits();
 
     const script = parseScriptableSteps(job.steps);
-    const saved = loadReplay(outputDir, job.name);
+    const saved = loadReplay(outputDir, job.name, {
+      startUrl: job.startUrl,
+      steps: job.steps,
+      assert: job.assert,
+    });
     let recorded: LlmAction[] = [];
     if (script) {
       recorded = scriptToActions(script, target);
@@ -98,7 +102,10 @@ export async function runE2e(
 
     const failed = findings.some((f) => f.severity === "fail");
     if (!failed) {
-      writeReplay(outputDir, job.name, job.startUrl, job.assert, recorded);
+      writeReplay(outputDir, job.name, job.startUrl, job.assert, recorded, {
+        steps: job.steps,
+        allow: scope.allow,
+      });
     }
     return {
       name: job.name,
