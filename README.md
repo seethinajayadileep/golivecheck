@@ -89,7 +89,7 @@ From this repo (or set `cwd` to the clone):
   "mcpServers": {
     "golivecheck": {
       "command": "npx",
-      "args": ["tsx", "src/cli.ts", "mcp"]
+      "args": ["--no-install", "tsx", "src/cli.ts", "mcp"]
     }
   }
 }

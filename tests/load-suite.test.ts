@@ -95,16 +95,23 @@ jobs:
     }
   });
 
-  it("loads owned.yaml when target and allow env vars are set", () => {
+  it("loads owned.yaml and login.yaml when target and allow env vars are set", () => {
     process.env.GOLIVECHECK_TARGET = "https://staging.example.com";
     process.env.GOLIVECHECK_ALLOW = "staging.example.com";
+    process.env.GOLIVECHECK_USER = "shopper@example.com";
+    process.env.GOLIVECHECK_PASSWORD = "pass123";
     try {
-      const suite = loadSuite(path.join(process.cwd(), "examples/suites/owned.yaml"));
-      expect(suite.target).toBe("https://staging.example.com");
-      expect(suite.allow).toEqual(["staging.example.com"]);
+      const owned = loadSuite(path.join(process.cwd(), "examples/suites/owned.yaml"));
+      expect(owned.target).toBe("https://staging.example.com");
+      expect(owned.allow).toEqual(["staging.example.com"]);
+      const login = loadSuite(path.join(process.cwd(), "examples/suites/login.yaml"));
+      expect(login.target).toBe("https://staging.example.com");
+      expect(login.allow).toEqual(["staging.example.com"]);
     } finally {
       delete process.env.GOLIVECHECK_TARGET;
       delete process.env.GOLIVECHECK_ALLOW;
+      delete process.env.GOLIVECHECK_USER;
+      delete process.env.GOLIVECHECK_PASSWORD;
     }
   });
 
