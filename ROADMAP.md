@@ -15,7 +15,7 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
 | Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
 | CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 2 — consumer-app PR gate on www.seethinajayadileep.dev |
+| Next | Phase 2 — enable the workflow on [portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1) |
 
 ---
 
@@ -68,8 +68,9 @@ Goal: one real staging URL + CI + another AI can call us.
 - [x] GitHub Action example for PRs (`--only security,a11y,api` by default)
 - [x] MCP + Cursor snippet in README
 - [x] First real-site run: no flake and no false header/a11y; remaining fails are real (missing nosniff / frame headers; html lang, link names, svg alt)
+- [x] Consumer-app PR opened: [seethinajayadileep/portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1)
 
-**Still open:** a PR on that site’s repo that fails when this cheap gate is red.
+**Still open:** copy `.github/golivecheck.yml` → `.github/workflows/golivecheck.yml` on that PR (this App cannot write workflow files). After that, the PR fails while a11y/security are red.
 
 **Exit:** a PR on that app fails when a11y/security/API is red; Cursor can `run_suite`.
 
