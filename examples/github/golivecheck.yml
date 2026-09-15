@@ -1,6 +1,6 @@
 # Copy into a repo you own as .github/workflows/golivecheck.yml
 # Cheap PR gate: security + a11y + API. No LLM key.
-# This copy points at the owned www subdomain.
+# This copy points at the owned test subdomain (not www — that is the live site).
 # Other apps: change target/allow, or use vars.GOLIVECHECK_TARGET / vars.GOLIVECHECK_ALLOW.
 # Needs a golivecheck.config.yaml in the app repo (or the Action falls back to its default suite).
 name: golivecheck
@@ -16,6 +16,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: seethinajayadileep/golivecheck@main
         with:
-          target: https://www.seethinajayadileep.dev
-          allow: www.seethinajayadileep.dev
+          target: https://test.seethinajayadileep.dev
+          allow: test.seethinajayadileep.dev
           only: security,a11y,api
