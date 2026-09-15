@@ -99,10 +99,10 @@ jobs:
     }
   });
 
-  it("loads test.yaml without environment variables", () => {
-    const suite = loadSuite(path.join(process.cwd(), "examples/suites/test.yaml"));
-    expect(suite.target).toBe("https://test.seethinajayadileep.dev");
-    expect(suite.allow).toEqual(["test.seethinajayadileep.dev"]);
+  it("loads www.yaml without environment variables", () => {
+    const suite = loadSuite(path.join(process.cwd(), "examples/suites/www.yaml"));
+    expect(suite.target).toBe("https://www.seethinajayadileep.dev");
+    expect(suite.allow).toEqual(["www.seethinajayadileep.dev"]);
   });
 
   it("loads owned.yaml and login.yaml when target and allow env vars are set", () => {
