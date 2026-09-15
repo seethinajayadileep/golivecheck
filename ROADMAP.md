@@ -15,7 +15,7 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
 | Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
 | CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 2 — point at a staging URL you own; finish real-site false-positive cleanup |
+| Next | Phase 2 — consumer-app PR gate on www.seethinajayadileep.dev |
 
 ---
 
@@ -63,11 +63,13 @@ npx golivecheck-agent run --only security,a11y   # works with no OPENAI_API_KEY
 Goal: one real staging URL + CI + another AI can call us.
 
 - [x] `${VAR}` in suite YAML (target / login) — `GOLIVECHECK_TARGET`, `GOLIVECHECK_USER`, `GOLIVECHECK_PASSWORD`
-- [ ] Point `golivecheck.config.yaml` at a staging site you own
+- [x] Point a suite at an owned host — `examples/suites/www.yaml` (`https://www.seethinajayadileep.dev`). Default `golivecheck.config.yaml` stays localhost so CI/demo do not hit the live site
 - [x] Env vars for test login (Fill/Click steps, no LLM)
 - [x] GitHub Action example for PRs (`--only security,a11y,api` by default)
 - [x] MCP + Cursor snippet in README
-- [ ] Fix false a11y / header / flaky E2E from the real site
+- [x] First real-site run: no flake and no false header/a11y; remaining fails are real (missing nosniff / frame headers; html lang, link names, svg alt)
+
+**Still open:** a PR on that site’s repo that fails when this cheap gate is red.
 
 **Exit:** a PR on that app fails when a11y/security/API is red; Cursor can `run_suite`.
 

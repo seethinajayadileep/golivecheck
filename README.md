@@ -52,11 +52,13 @@ npx tsx src/cli.ts report
 
 ## Point it at a site you own
 
-Copy `.env.example`. Set `GOLIVECHECK_TARGET` / `GOLIVECHECK_ALLOW` to **your** staging host. Cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
+Copy `.env.example`. The Phase 2 owned host is the **www** subdomain: [examples/suites/www.yaml](./examples/suites/www.yaml). Env-based cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
 
 ```bash
-export GOLIVECHECK_TARGET=https://staging.example.com
-export GOLIVECHECK_ALLOW=staging.example.com
+npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/www.yaml
+# or
+export GOLIVECHECK_TARGET=https://www.seethinajayadileep.dev
+export GOLIVECHECK_ALLOW=www.seethinajayadileep.dev
 npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/owned.yaml
 ```
 
@@ -71,8 +73,8 @@ Cheap PR gate — API, a11y, security; **no secrets required** beyond the target
 ```yaml
 - uses: seethinajayadileep/golivecheck@main
   with:
-    target: https://staging.example.com
-    allow: staging.example.com
+    target: https://www.seethinajayadileep.dev
+    allow: www.seethinajayadileep.dev
     only: security,a11y,api
 ```
 
@@ -101,7 +103,7 @@ Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `ru
 
 ## Status
 
-Phase 1 v0 is on `main`. Phase 2: env-based target/login, Action example, Cursor MCP snippet.
+Phase 1 v0 is on `main`. Phase 2: env-based target/login, Action example, Cursor MCP snippet, owned host `www.seethinajayadileep.dev`.
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)
