@@ -60,6 +60,8 @@ function cmdInit(dir: string): number {
   writeFileSync(
     dest,
     `name: my-suite
+# Point target at a site you own. Login secrets: GOLIVECHECK_USER / GOLIVECHECK_PASSWORD
+# (see examples/suites/login.yaml).
 target: http://127.0.0.1:4173
 allow:
   - 127.0.0.1

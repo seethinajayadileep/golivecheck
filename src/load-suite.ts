@@ -5,6 +5,43 @@ import type { Job, JobType, Suite } from "./types.js";
 
 const JOB_TYPES: JobType[] = ["e2e", "api", "a11y", "security"];
 const CART_ASSERT = /^the cart is not empty\.?$/i;
+const PAGE_CONTAINS = /^the page contains\s+.+/i;
+const ENV_TOKEN = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/**
+ * Replaces `${VAR}` tokens using process env. Empty or missing vars fail.
+ *
+ * @param text - Suite string that may contain `${NAME}` placeholders.
+ * @param env - Environment map (defaults to `process.env`).
+ */
+export function expandEnv(text: string, env: NodeJS.ProcessEnv = process.env): string {
+  return text.replace(ENV_TOKEN, (_, name: string) => {
+    const value = env[name];
+    if (value == null || value === "") {
+      throw new ConfigError(`Missing environment variable ${name}`);
+    }
+    return value;
+  });
+}
+
+/**
+ * Walks JSON-like YAML values and expands `${VAR}` in every string.
+ *
+ * @param value - Parsed YAML node.
+ * @param env - Environment map.
+ */
+export function expandEnvDeep(value: unknown, env: NodeJS.ProcessEnv = process.env): unknown {
+  if (typeof value === "string") return expandEnv(value, env);
+  if (Array.isArray(value)) return value.map((item) => expandEnvDeep(item, env));
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = expandEnvDeep(nested, env);
+    }
+    return out;
+  }
+  return value;
+}
 
 /**
  * Loads and validates a suite YAML file.
@@ -20,6 +57,8 @@ export function loadSuite(filePath: string, targetOverride?: string): Suite {
   } catch (err) {
     throw new ConfigError(`Cannot read suite ${filePath}: ${(err as Error).message}`);
   }
+  raw = expandEnvDeep(raw);
+  if (targetOverride) targetOverride = expandEnv(targetOverride);
   if (!raw || typeof raw !== "object") {
     throw new ConfigError("Suite YAML must be an object");
   }
@@ -110,7 +149,7 @@ function parseJob(raw: unknown, index: number): Job {
   if (type === "e2e") {
     const asserts = arr(job.assert);
     for (const assertion of asserts) {
-      if (!CART_ASSERT.test(assertion)) {
+      if (!CART_ASSERT.test(assertion) && !PAGE_CONTAINS.test(assertion)) {
         throw new ConfigError(`Unsupported E2E assertion "${assertion}" in job ${name}`);
       }
     }

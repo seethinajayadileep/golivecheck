@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import { Budget } from "./budget.js";
 import { BudgetExceededError, ConfigError, ScopeViolationError } from "./errors.js";
-import { loadSuite } from "./load-suite.js";
+import { expandEnv, loadSuite } from "./load-suite.js";
 import { runA11y } from "./plugins/a11y.js";
 import { runApi } from "./plugins/api.js";
 import { runE2e } from "./plugins/e2e.js";
@@ -22,7 +22,7 @@ export async function runSuite(
   options: RunOptions,
 ): Promise<{ report: RunReport; exitCode: number; paths: { html: string; json: string; junit: string } }> {
   const suite = loadSuite(options.configPath, options.targetOverride);
-  if (options.allowOverride?.length) suite.allow = options.allowOverride;
+  if (options.allowOverride?.length) suite.allow = options.allowOverride.map((host) => expandEnv(host));
   const scope = scopeFromTarget(suite.target, suite.allow);
   const budget = new Budget(suite.budget);
   const startedAt = new Date().toISOString();

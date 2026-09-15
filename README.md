@@ -50,9 +50,60 @@ npx tsx src/cli.ts report
 
 ---
 
+## Point it at a site you own
+
+Copy `.env.example`. The Phase 2 owned host is the live website: [examples/suites/www.yaml](./examples/suites/www.yaml). Env-based cheap gate: [examples/suites/owned.yaml](./examples/suites/owned.yaml). Test login (no LLM) uses quoted Fill/Click steps so YAML `#ids` are not comments — see [examples/suites/login.yaml](./examples/suites/login.yaml).
+
+```bash
+npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/www.yaml
+# or
+export GOLIVECHECK_TARGET=https://www.seethinajayadileep.dev
+export GOLIVECHECK_ALLOW=www.seethinajayadileep.dev
+npx tsx src/cli.ts run --only security,a11y,api --config examples/suites/owned.yaml
+```
+
+Suite strings may contain `${VAR}`. Missing vars fail the run. Do not scan hosts you do not own.
+
+---
+
+## GitHub Action (other apps)
+
+Cheap PR gate — API, a11y, security; **no secrets required** beyond the target you own. Copy [examples/github/golivecheck.yml](./examples/github/golivecheck.yml):
+
+```yaml
+- uses: seethinajayadileep/golivecheck@main
+  with:
+    target: https://www.seethinajayadileep.dev
+    allow: www.seethinajayadileep.dev
+    only: security,a11y,api
+```
+
+`target` and `allow` are required. Default `only` is `security,a11y,api`.
+
+---
+
+## Cursor / MCP
+
+From this repo (or set `cwd` to the clone):
+
+```json
+{
+  "mcpServers": {
+    "golivecheck": {
+      "command": "npx",
+      "args": ["--no-install", "tsx", "src/cli.ts", "mcp"]
+    }
+  }
+}
+```
+
+Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `run_suite` (requires `target` + `allow`), `get_last_report`, `list_findings`.
+
+---
+
 ## Status
 
-Phase 1 v0 is implemented in this repo (demo shop, four plugins, report, CLI, Action, MCP).
+Phase 2 is implemented: cheap gate against `www.seethinajayadileep.dev` (API passed; a11y/security red on real issues). Merge [PR #6](https://github.com/seethinajayadileep/golivecheck/pull/6) to put it on `main`.
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)

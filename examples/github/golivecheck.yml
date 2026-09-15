@@ -1,0 +1,21 @@
+# Copy into a repo you own as .github/workflows/golivecheck.yml
+# Cheap PR gate: security + a11y + API. No LLM key.
+# This copy points at the live website.
+# Other apps: change target/allow, or use vars.GOLIVECHECK_TARGET / vars.GOLIVECHECK_ALLOW.
+# Needs a golivecheck.config.yaml in the app repo (or the Action falls back to its default suite).
+name: golivecheck
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  golivecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seethinajayadileep/golivecheck@main
+        with:
+          target: https://www.seethinajayadileep.dev
+          allow: www.seethinajayadileep.dev
+          only: security,a11y,api

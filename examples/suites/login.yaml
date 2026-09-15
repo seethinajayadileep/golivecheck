@@ -1,0 +1,17 @@
+name: demo-login
+target: ${GOLIVECHECK_TARGET}
+allow:
+  - ${GOLIVECHECK_ALLOW}
+budget:
+  maxMinutes: 8
+  maxLlmCalls: 0
+jobs:
+  - type: e2e
+    name: sign-in
+    startUrl: /login
+    steps:
+      - "Fill #email with ${GOLIVECHECK_USER}"
+      - "Fill #password with ${GOLIVECHECK_PASSWORD}"
+      - "Click #login-submit"
+    assert:
+      - The page contains Signed in

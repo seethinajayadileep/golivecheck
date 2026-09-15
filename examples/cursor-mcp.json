@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "golivecheck": {
+      "command": "npx",
+      "args": ["--no-install", "tsx", "src/cli.ts", "mcp"]
+    }
+  }
+}

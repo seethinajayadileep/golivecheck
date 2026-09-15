@@ -11,7 +11,7 @@ inputs:
     description: Comma-separated allowlist hosts.
     required: true
   config:
-    description: Path to the suite YAML.
+    description: Path to the suite YAML. If missing in the consumer repo, the Action's default suite is used.
     required: false
     default: golivecheck.config.yaml
   only:
@@ -41,8 +41,12 @@ runs:
           echo "target and allow are required"
           exit 2
         fi
+        CONFIG="${INPUT_CONFIG}"
+        if [ ! -f "${CONFIG}" ]; then
+          CONFIG="$ACTION_PATH/golivecheck.config.yaml"
+        fi
         npx --prefix "$ACTION_PATH" tsx "$ACTION_PATH/src/cli.ts" run \
-          --config "${INPUT_CONFIG}" \
+          --config "${CONFIG}" \
           --target "${INPUT_TARGET}" \
           --allow "${INPUT_ALLOW}" \
           --only "${INPUT_ONLY}"

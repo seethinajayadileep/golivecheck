@@ -1,0 +1,20 @@
+name: owned-staging
+# Point GOLIVECHECK_TARGET / GOLIVECHECK_ALLOW at a host you own.
+target: ${GOLIVECHECK_TARGET}
+allow:
+  - ${GOLIVECHECK_ALLOW}
+budget:
+  maxMinutes: 8
+  maxLlmCalls: 0
+jobs:
+  - type: security
+    name: baseline
+    url: /
+  - type: a11y
+    name: home
+    url: /
+    tags: [wcag2aa]
+  - type: api
+    name: health
+    requests:
+      - { method: GET, path: /, expectStatus: 200 }

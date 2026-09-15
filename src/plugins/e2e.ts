@@ -9,8 +9,10 @@ import type { Scope } from "../scope.js";
 import type { E2eJob, Finding, JobResult } from "../types.js";
 import { artifactSlug, joinUrl } from "../urls.js";
 import { BudgetExceededError, ScopeViolationError } from "../errors.js";
+import { parseScriptableSteps, type ScriptStep } from "./e2e-script.js";
 
 const CART_ASSERT = /cart is not empty/i;
+const PAGE_CONTAINS = /^the page contains\s+["']?(.+?)["']?$/i;
 
 /**
  * Runs one E2E job with a saved demo script or an LLM action loop.
@@ -48,14 +50,19 @@ export async function runE2e(
     assertAllowed();
     budget.assertWithinLimits();
 
-    if (hasLlmKey()) {
+    const script = parseScriptableSteps(job.steps);
+    if (script) {
+      await runScriptable(page, script, target, scope, budget, outputDir, screenshots);
+      assertAllowed();
+    } else if (hasLlmKey()) {
       await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
     } else if (job.name === "buy-one-item") {
-      await runSavedBuyOneItem(page, scope, timeout);
+      await runSavedBuyOneItem(page, scope, budget);
       assertAllowed();
+      budget.assertWithinLimits();
     } else {
       throw new Error(
-        `No saved script for E2E job "${job.name}" and OPENAI_API_KEY is not set. Demo job "buy-one-item" has a fallback.`,
+        `No saved script for E2E job "${job.name}" and OPENAI_API_KEY is not set. Use Fill/Click/Open/Wait/Press steps, or the demo job "buy-one-item".`,
       );
     }
 
@@ -72,7 +79,7 @@ export async function runE2e(
 
     const shot = path.join(outputDir, "screenshots", `${artifactSlug(job.name)}.png`);
     mkdirSync(path.dirname(shot), { recursive: true });
-    await page.screenshot({ path: shot, fullPage: true, timeout });
+    await page.screenshot({ path: shot, fullPage: true, timeout: navTimeout(budget) });
     screenshots.push(shot);
 
     const failed = findings.some((f) => f.severity === "fail");
@@ -137,7 +144,6 @@ async function runWithLlm(
   findings: Finding[],
   assertAllowed: () => void,
 ): Promise<void> {
-  const timeout = navTimeout(budget);
   for (let i = 0; i < 6; i++) {
     budget.recordLlmCall();
     const snapshot = await page.locator("body").ariaSnapshot().catch(() => page.content());
@@ -156,7 +162,7 @@ async function runWithLlm(
     });
     if (turn.done && turn.actions.length === 0) break;
     if (turn.actions.length === 0) break;
-    await runActions(page, turn.actions, scope, outputDir, screenshots, timeout);
+    await runActions(page, turn.actions, scope, budget, outputDir, screenshots);
     assertAllowed();
     if (await assertionsLookMet(page, job.assert)) break;
   }
@@ -203,7 +209,40 @@ async function assertionHolds(page: Page, assertion: string): Promise<boolean> {
   if (CART_ASSERT.test(assertion)) {
     return (await page.locator("#cart-items li").count()) >= 1;
   }
+  const contains = assertion.match(PAGE_CONTAINS);
+  if (contains) {
+    const text = contains[1].trim();
+    return (await page.getByText(text).count()) >= 1;
+  }
   return false;
+}
+
+/**
+ * Runs Fill/Click/Open/Wait/Press steps without sending secrets to an LLM.
+ *
+ * @param page - Active page.
+ * @param steps - Parsed scriptable steps.
+ * @param target - Suite target URL.
+ * @param scope - Host allowlist.
+ * @param budget - Suite budget.
+ */
+async function runScriptable(
+  page: Page,
+  steps: ScriptStep[],
+  target: string,
+  scope: Scope,
+  budget: Budget,
+  outputDir: string,
+  screenshots: string[],
+): Promise<void> {
+  const actions: LlmAction[] = steps.map((step) => {
+    if (step.op === "fill") return { op: "fill", selector: step.selector, value: step.value };
+    if (step.op === "click") return { op: "click", selector: step.selector };
+    if (step.op === "open") return { op: "goto", url: joinUrl(target, step.url) };
+    if (step.op === "wait") return { op: "wait", ms: Math.min(step.ms, 5_000) };
+    return { op: "press", key: step.key };
+  });
+  await runActions(page, actions, scope, budget, outputDir, screenshots);
 }
 
 /**
@@ -211,13 +250,16 @@ async function assertionHolds(page: Page, assertion: string): Promise<boolean> {
  *
  * @param page - Active page already on the shop home.
  * @param scope - Host allowlist.
- * @param timeout - Playwright timeout in ms.
+ * @param budget - Suite budget; refreshed before each Playwright action.
  */
-async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Promise<void> {
-  await page.locator(".product-link").first().click({ timeout });
+async function runSavedBuyOneItem(page: Page, scope: Scope, budget: Budget): Promise<void> {
+  await page.locator(".product-link").first().click({ timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
   scope.assert(page.url());
-  await page.locator("#add-to-cart").click({ timeout });
-  await page.waitForURL(/\/cart/, { timeout });
+  await page.locator("#add-to-cart").click({ timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
+  await page.waitForURL(/\/cart/, { timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
   scope.assert(page.url());
   const count = await page.locator("#cart-items li").count();
   if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
@@ -231,17 +273,18 @@ async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Pr
  * @param scope - Host allowlist.
  * @param outputDir - Screenshot directory.
  * @param screenshots - Accumulated paths.
- * @param timeout - Playwright timeout in ms.
+ * @param budget - Suite budget; checked before every action.
  */
 async function runActions(
   page: Page,
   actions: LlmAction[],
   scope: Scope,
+  budget: Budget,
   outputDir: string,
   screenshots: string[],
-  timeout: number,
 ): Promise<void> {
   for (const action of actions) {
+    const timeout = navTimeout(budget);
     switch (action.op) {
       case "goto": {
         const url = action.url;
@@ -251,6 +294,7 @@ async function runActions(
       }
       case "click":
         await locate(page, action.selector).first().click({ timeout });
+        await page.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
         break;
       case "fill":
         await locate(page, action.selector).first().fill(action.value, { timeout });
@@ -260,7 +304,7 @@ async function runActions(
         break;
       case "wait":
         if (action.selector) await locate(page, action.selector).first().waitFor({ timeout });
-        else await page.waitForTimeout(Math.min(action.ms ?? 500, 5_000));
+        else await page.waitForTimeout(Math.min(action.ms ?? 500, 5_000, budget.remainingMs()));
         break;
       case "screenshot": {
         const shot = path.join(outputDir, "screenshots", `${artifactSlug(action.name || "step")}.png`);
@@ -272,6 +316,7 @@ async function runActions(
       default:
         break;
     }
+    budget.assertWithinLimits();
     scope.assert(page.url());
   }
 }

@@ -42,7 +42,7 @@ npx golivecheck-agent report
 
 Or MCP tools:
 
-- `run_suite` — `{ target, suitePath?, types? }`
+- `run_suite` — `{ target, allow, suitePath?, types? }` (`target` and `allow` required)
 - `get_last_report` — summary + `output/report.html` / `report.json` paths
 - `list_findings` — `{ severity? }`
 
@@ -55,6 +55,8 @@ Or MCP tools:
 - `OPENAI_API_KEY` **only** if they want English E2E (optional)
 
 Cheap gate (no key): `--only security,a11y,api`
+
+Login without an LLM: quoted suite steps `"Fill #email with ${GOLIVECHECK_USER}"` / `"Fill #password with ${GOLIVECHECK_PASSWORD}"` / `"Click #login-submit"` (quote CSS `#ids` so YAML does not treat `#` as a comment). Cursor MCP config: `examples/cursor-mcp.json`.
 
 ---
 
