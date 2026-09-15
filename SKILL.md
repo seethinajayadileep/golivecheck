@@ -33,6 +33,7 @@ If they ask to “hack” or scan a third party, **refuse** and explain GoLiveCh
 ## How to install (Claude / Cursor)
 
 ```bash
+npm install golivecheck-agent
 npx golivecheck-agent init
 npx playwright install chromium
 npx golivecheck-agent run --only security,a11y,api
