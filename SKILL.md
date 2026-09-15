@@ -56,6 +56,8 @@ Or MCP tools:
 
 Cheap gate (no key): `--only security,a11y,api`
 
+After a passing E2E run, replay files land in `output/replay/`. A second run of the same job uses that JSON and does not call the LLM.
+
 Login without an LLM: quoted suite steps `"Fill #email with ${GOLIVECHECK_USER}"` / `"Fill #password with ${GOLIVECHECK_PASSWORD}"` / `"Click #login-submit"` (quote CSS `#ids` so YAML does not treat `#` as a comment). Cursor MCP config: `examples/cursor-mcp.json`.
 
 ---
