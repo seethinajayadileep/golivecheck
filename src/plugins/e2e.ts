@@ -57,8 +57,9 @@ export async function runE2e(
     } else if (hasLlmKey()) {
       await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
     } else if (job.name === "buy-one-item") {
-      await runSavedBuyOneItem(page, scope, timeout);
+      await runSavedBuyOneItem(page, scope, budget);
       assertAllowed();
+      budget.assertWithinLimits();
     } else {
       throw new Error(
         `No saved script for E2E job "${job.name}" and OPENAI_API_KEY is not set. Use Fill/Click/Open/Wait/Press steps, or the demo job "buy-one-item".`,
@@ -78,7 +79,7 @@ export async function runE2e(
 
     const shot = path.join(outputDir, "screenshots", `${artifactSlug(job.name)}.png`);
     mkdirSync(path.dirname(shot), { recursive: true });
-    await page.screenshot({ path: shot, fullPage: true, timeout });
+    await page.screenshot({ path: shot, fullPage: true, timeout: navTimeout(budget) });
     screenshots.push(shot);
 
     const failed = findings.some((f) => f.severity === "fail");
@@ -249,13 +250,16 @@ async function runScriptable(
  *
  * @param page - Active page already on the shop home.
  * @param scope - Host allowlist.
- * @param timeout - Playwright timeout in ms.
+ * @param budget - Suite budget; refreshed before each Playwright action.
  */
-async function runSavedBuyOneItem(page: Page, scope: Scope, timeout: number): Promise<void> {
-  await page.locator(".product-link").first().click({ timeout });
+async function runSavedBuyOneItem(page: Page, scope: Scope, budget: Budget): Promise<void> {
+  await page.locator(".product-link").first().click({ timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
   scope.assert(page.url());
-  await page.locator("#add-to-cart").click({ timeout });
-  await page.waitForURL(/\/cart/, { timeout });
+  await page.locator("#add-to-cart").click({ timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
+  await page.waitForURL(/\/cart/, { timeout: navTimeout(budget) });
+  budget.assertWithinLimits();
   scope.assert(page.url());
   const count = await page.locator("#cart-items li").count();
   if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
