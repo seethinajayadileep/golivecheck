@@ -103,7 +103,7 @@ Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `ru
 
 ## Status
 
-Phase 1 v0 is on `main`. Phase 2: env-based target/login, Action example, Cursor MCP snippet, owned host `www.seethinajayadileep.dev`.
+Phase 2 is implemented: cheap gate against `www.seethinajayadileep.dev` (API passed; a11y/security red on real issues). Merge [PR #6](https://github.com/seethinajayadileep/golivecheck/pull/6) to put it on `main`.
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)

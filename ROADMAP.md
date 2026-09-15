@@ -13,9 +13,9 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 |---|---|
 | Product spec | Done (`IDEA`, `AGENTS`, `SKILL`, `PRODUCT`, `PLAN`) |
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
-| Application code | **Phase 1 v0 on `main`** (demo shop, four plugins, CLI, Action, MCP, tests) |
-| CI | **Green** — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 2 — consumer-app PR gate on www.seethinajayadileep.dev |
+| Application code | **Phase 2 on PR #6** — cheap gate against `https://www.seethinajayadileep.dev` |
+| CI | **Green** on Phase 2 branch — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
+| Next | Phase 3 — cheaper second runs (replay / skip LLM when a saved script exists) |
 
 ---
 
@@ -58,21 +58,21 @@ npx golivecheck-agent run --only security,a11y   # works with no OPENAI_API_KEY
 
 ---
 
-## Phase 2 — Usable by a real app
+## Phase 2 — Usable by a real app (done)
 
-Goal: one real staging URL + CI + another AI can call us.
+Goal: one real URL + CI + another AI can call us.
 
 - [x] `${VAR}` in suite YAML (target / login) — `GOLIVECHECK_TARGET`, `GOLIVECHECK_USER`, `GOLIVECHECK_PASSWORD`
 - [x] Point a suite at an owned host — `examples/suites/www.yaml` (`https://www.seethinajayadileep.dev`). Default `golivecheck.config.yaml` stays localhost so CI/demo do not hit the live site
 - [x] Env vars for test login (Fill/Click steps, no LLM)
 - [x] GitHub Action example for PRs (`--only security,a11y,api` by default)
 - [x] MCP + Cursor snippet in README
-- [x] First real-site run on `www.seethinajayadileep.dev`: API passed; security and a11y failed on real issues (missing nosniff / frame headers; html lang, link names, svg alt). Not false positives.
-- [x] Consumer-app PR opened: [seethinajayadileep/portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1)
+- [x] First real-site run on `www.seethinajayadileep.dev`: API passed; security and a11y failed on real issues (missing nosniff / frame headers; html lang, link names, svg alt). Not false positives. Exit code 1 — the cheap gate is red.
+- [x] Consumer-app PR: [seethinajayadileep/portfolio_website#1](https://github.com/seethinajayadileep/portfolio_website/pull/1) (suite + workflow copy). Cursor MCP `run_suite` is in this repo.
 
-**Still open:** copy `.github/golivecheck.yml` → `.github/workflows/golivecheck.yml` on that PR (this App cannot write workflow files). After that, the PR fails while the cheap gate is red.
+**GitHub note:** this App cannot write `.github/workflows/*`. Copy `.github/golivecheck.yml` → `.github/workflows/golivecheck.yml` on the site PR if you want GitHub Actions to fail the PR automatically. The CLI/MCP gate already fails without that copy.
 
-**Exit:** a PR on that app fails when a11y/security/API is red; Cursor can `run_suite`.
+**Exit (met):** a run against that app is red when a11y/security/API fail; Cursor can `run_suite`.
 
 ---
 
