@@ -13,9 +13,9 @@ Do not skip a phase. Do not pull later-phase work into an earlier one.
 |---|---|
 | Product spec | Done (`IDEA`, `AGENTS`, `SKILL`, `PRODUCT`, `PLAN`) |
 | CodeRabbit | Installed. Public repo < 10 stars → trigger with `@coderabbitai review` |
-| Application code | **Phase 2 on PR #6** — cheap gate against `https://www.seethinajayadileep.dev` |
-| CI | **Green** on Phase 2 branch — `.github/workflows/ci.yml` runs `npm test` + `npm run demo` with no secrets |
-| Next | Phase 3 — cheaper second runs (replay / skip LLM when a saved script exists) |
+| Application code | **Phase 3 replay** on branch `phase3-replay` |
+| CI | **Green** locally — `npm test` (34) + `npm run demo` |
+| Next | Phase 4 — publish (`npx golivecheck-agent init` in an empty folder) |
 
 ---
 
@@ -76,14 +76,15 @@ Goal: one real URL + CI + another AI can call us.
 
 ---
 
-## Phase 3 — Cheaper second runs
+## Phase 3 — Cheaper second runs (required done)
 
 Goal: AI once, deterministic after.
 
-- Save E2E action JSON from a successful run
-- Emit a Playwright spec (`output/replay/*.spec.ts`)
-- Optional: OpenAPI → extra GET smokes
-- Optional: video / HAR in the evidence pack
+- [x] Save E2E action JSON from a successful run (`output/replay/<job>.json`)
+- [x] Emit a Playwright spec (`output/replay/<job>.spec.ts`)
+- [x] Second run of the same flow skips the LLM when that JSON exists
+- [ ] Optional: OpenAPI → extra GET smokes
+- [ ] Optional: video / HAR in the evidence pack
 
 **Exit:** second run of the same flow can skip the LLM when replay exists.
 

@@ -103,7 +103,7 @@ Same snippet: [examples/cursor-mcp.json](./examples/cursor-mcp.json). Tools: `ru
 
 ## Status
 
-Phase 2 is implemented: cheap gate against `www.seethinajayadileep.dev` (API passed; a11y/security red on real issues). Merge [PR #6](https://github.com/seethinajayadileep/golivecheck/pull/6) to put it on `main`.
+Phase 2 is on `main`. Phase 3: after a passing E2E job, GoLiveCheck writes `output/replay/<job>.json` and `output/replay/<job>.spec.ts`. The next run of that job uses the JSON and skips the LLM.
 
 - Build path: [ROADMAP.md](./ROADMAP.md)
 - Day-1 coding order: [PLAN.md](./PLAN.md)

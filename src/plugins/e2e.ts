@@ -10,6 +10,7 @@ import type { E2eJob, Finding, JobResult } from "../types.js";
 import { artifactSlug, joinUrl } from "../urls.js";
 import { BudgetExceededError, ScopeViolationError } from "../errors.js";
 import { parseScriptableSteps, type ScriptStep } from "./e2e-script.js";
+import { loadReplay, writeReplay } from "../replay.js";
 
 const CART_ASSERT = /cart is not empty/i;
 const PAGE_CONTAINS = /^the page contains\s+["']?(.+?)["']?$/i;
@@ -51,13 +52,26 @@ export async function runE2e(
     budget.assertWithinLimits();
 
     const script = parseScriptableSteps(job.steps);
+    const saved = loadReplay(outputDir, job.name);
+    let recorded: LlmAction[] = [];
     if (script) {
-      await runScriptable(page, script, target, scope, budget, outputDir, screenshots);
+      recorded = scriptToActions(script, target);
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
+      assertAllowed();
+    } else if (saved) {
+      recorded = saved.actions;
+      findings.push({
+        severity: "info",
+        check: "replay",
+        message: `used saved actions for "${job.name}" (no LLM)`,
+      });
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
       assertAllowed();
     } else if (hasLlmKey()) {
-      await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
+      recorded = await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
     } else if (job.name === "buy-one-item") {
-      await runSavedBuyOneItem(page, scope, budget);
+      recorded = BUY_ONE_ITEM_ACTIONS;
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
       assertAllowed();
       budget.assertWithinLimits();
     } else {
@@ -83,6 +97,9 @@ export async function runE2e(
     screenshots.push(shot);
 
     const failed = findings.some((f) => f.severity === "fail");
+    if (!failed) {
+      writeReplay(outputDir, job.name, job.startUrl, job.assert, recorded);
+    }
     return {
       name: job.name,
       type: "e2e",
@@ -123,6 +140,8 @@ function navTimeout(budget: Budget): number {
 /**
  * LLM loop: plan, redact fill values in findings, run actions, stop when asserts hold.
  *
+ * @returns Actions that ran (for replay).
+ *
  * @param page - Active page.
  * @param job - E2E job.
  * @param startUrl - Absolute start URL.
@@ -143,7 +162,8 @@ async function runWithLlm(
   screenshots: string[],
   findings: Finding[],
   assertAllowed: () => void,
-): Promise<void> {
+): Promise<LlmAction[]> {
+  const recorded: LlmAction[] = [];
   for (let i = 0; i < 6; i++) {
     budget.recordLlmCall();
     const snapshot = await page.locator("body").ariaSnapshot().catch(() => page.content());
@@ -162,10 +182,12 @@ async function runWithLlm(
     });
     if (turn.done && turn.actions.length === 0) break;
     if (turn.actions.length === 0) break;
+    recorded.push(...turn.actions);
     await runActions(page, turn.actions, scope, budget, outputDir, screenshots);
     assertAllowed();
     if (await assertionsLookMet(page, job.assert)) break;
   }
+  return recorded;
 }
 
 /**
@@ -217,52 +239,26 @@ async function assertionHolds(page: Page, assertion: string): Promise<boolean> {
   return false;
 }
 
+/** Demo-shop clicks used when there is no LLM, no Fill/Click script, and no replay yet. */
+const BUY_ONE_ITEM_ACTIONS: LlmAction[] = [
+  { op: "click", selector: ".product-link" },
+  { op: "click", selector: "#add-to-cart" },
+];
+
 /**
- * Runs Fill/Click/Open/Wait/Press steps without sending secrets to an LLM.
+ * Maps Fill/Click/Open/Wait/Press steps onto planner actions.
  *
- * @param page - Active page.
  * @param steps - Parsed scriptable steps.
  * @param target - Suite target URL.
- * @param scope - Host allowlist.
- * @param budget - Suite budget.
  */
-async function runScriptable(
-  page: Page,
-  steps: ScriptStep[],
-  target: string,
-  scope: Scope,
-  budget: Budget,
-  outputDir: string,
-  screenshots: string[],
-): Promise<void> {
-  const actions: LlmAction[] = steps.map((step) => {
+function scriptToActions(steps: ScriptStep[], target: string): LlmAction[] {
+  return steps.map((step) => {
     if (step.op === "fill") return { op: "fill", selector: step.selector, value: step.value };
     if (step.op === "click") return { op: "click", selector: step.selector };
     if (step.op === "open") return { op: "goto", url: joinUrl(target, step.url) };
     if (step.op === "wait") return { op: "wait", ms: Math.min(step.ms, 5_000) };
     return { op: "press", key: step.key };
   });
-  await runActions(page, actions, scope, budget, outputDir, screenshots);
-}
-
-/**
- * Saved demo path: open the first product and add it to the cart.
- *
- * @param page - Active page already on the shop home.
- * @param scope - Host allowlist.
- * @param budget - Suite budget; refreshed before each Playwright action.
- */
-async function runSavedBuyOneItem(page: Page, scope: Scope, budget: Budget): Promise<void> {
-  await page.locator(".product-link").first().click({ timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  scope.assert(page.url());
-  await page.locator("#add-to-cart").click({ timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  await page.waitForURL(/\/cart/, { timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  scope.assert(page.url());
-  const count = await page.locator("#cart-items li").count();
-  if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
 }
 
 /**
