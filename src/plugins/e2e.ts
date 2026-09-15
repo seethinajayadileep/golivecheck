@@ -10,6 +10,7 @@ import type { E2eJob, Finding, JobResult } from "../types.js";
 import { artifactSlug, joinUrl } from "../urls.js";
 import { BudgetExceededError, ScopeViolationError } from "../errors.js";
 import { parseScriptableSteps, type ScriptStep } from "./e2e-script.js";
+import { loadReplay, writeReplay } from "../replay.js";
 
 const CART_ASSERT = /cart is not empty/i;
 const PAGE_CONTAINS = /^the page contains\s+["']?(.+?)["']?$/i;
@@ -51,13 +52,26 @@ export async function runE2e(
     budget.assertWithinLimits();
 
     const script = parseScriptableSteps(job.steps);
+    const saved = loadReplay(outputDir, job.name);
+    let recorded: LlmAction[] = [];
     if (script) {
-      await runScriptable(page, script, target, scope, budget, outputDir, screenshots);
+      recorded = scriptToActions(script, target);
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
+      assertAllowed();
+    } else if (saved) {
+      recorded = saved.actions;
+      findings.push({
+        severity: "info",
+        check: "replay",
+        message: `used saved actions for "${job.name}" (no LLM)`,
+      });
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
       assertAllowed();
     } else if (hasLlmKey()) {
-      await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
+      recorded = await runWithLlm(page, job, start, scope, budget, outputDir, screenshots, findings, assertAllowed);
     } else if (job.name === "buy-one-item") {
-      await runSavedBuyOneItem(page, scope, budget);
+      recorded = BUY_ONE_ITEM_ACTIONS;
+      await runActions(page, recorded, scope, budget, outputDir, screenshots);
       assertAllowed();
       budget.assertWithinLimits();
     } else {
@@ -83,6 +97,9 @@ export async function runE2e(
     screenshots.push(shot);
 
     const failed = findings.some((f) => f.severity === "fail");
+    if (!failed) {
+      writeReplay(outputDir, job.name, job.startUrl, job.assert, recorded);
+    }
     return {
       name: job.name,
       type: "e2e",
@@ -108,251 +125,4 @@ export async function runE2e(
   } finally {
     await context.close();
   }
-}
-
-/**
- * Playwright timeout capped by remaining budget.
- *
- * @param budget - Active suite budget.
- */
-function navTimeout(budget: Budget): number {
-  budget.assertWithinLimits();
-  return Math.max(1, Math.min(30_000, budget.remainingMs()));
-}
-
-/**
- * LLM loop: plan, redact fill values in findings, run actions, stop when asserts hold.
- *
- * @param page - Active page.
- * @param job - E2E job.
- * @param startUrl - Absolute start URL.
- * @param scope - Host allowlist.
- * @param budget - Suite budget.
- * @param outputDir - Screenshot directory.
- * @param screenshots - Accumulated screenshot paths.
- * @param findings - Accumulated findings.
- * @param assertAllowed - Throws if a request was blocked.
- */
-async function runWithLlm(
-  page: Page,
-  job: E2eJob,
-  startUrl: string,
-  scope: Scope,
-  budget: Budget,
-  outputDir: string,
-  screenshots: string[],
-  findings: Finding[],
-  assertAllowed: () => void,
-): Promise<void> {
-  for (let i = 0; i < 6; i++) {
-    budget.recordLlmCall();
-    const snapshot = await page.locator("body").ariaSnapshot().catch(() => page.content());
-    const turn = await planActions({
-      steps: job.steps,
-      assert: job.assert,
-      startUrl,
-      currentUrl: page.url(),
-      ariaSnapshot: typeof snapshot === "string" ? snapshot : String(snapshot),
-      signal: budget.signal,
-    });
-    findings.push({
-      severity: "info",
-      check: "llm-plan",
-      message: `turn ${i + 1}: ${JSON.stringify(redactTurn(turn))}`,
-    });
-    if (turn.done && turn.actions.length === 0) break;
-    if (turn.actions.length === 0) break;
-    await runActions(page, turn.actions, scope, budget, outputDir, screenshots);
-    assertAllowed();
-    if (await assertionsLookMet(page, job.assert)) break;
-  }
-}
-
-/**
- * Copies a plan turn with `fill.value` replaced so reports never store secrets.
- *
- * @param turn - Raw planner output.
- */
-function redactTurn(turn: { actions: LlmAction[]; done: boolean }): { actions: LlmAction[]; done: boolean } {
-  return {
-    done: turn.done,
-    actions: turn.actions.map((action) =>
-      action.op === "fill" ? { ...action, value: "[redacted]" } : action,
-    ),
-  };
-}
-
-/**
- * True when every assertion is a known check and currently holds.
- *
- * Unknown assertion strings are treated as unmet so the LLM loop does not stop early.
- *
- * @param page - Active page.
- * @param asserts - Assertion strings from the suite.
- */
-async function assertionsLookMet(page: Page, asserts: string[]): Promise<boolean> {
-  if (asserts.length === 0) return false;
-  for (const assertion of asserts) {
-    if (!(await assertionHolds(page, assertion))) return false;
-  }
-  return true;
-}
-
-/**
- * Evaluates one known assertion against the demo shop DOM.
- *
- * @param page - Active page.
- * @param assertion - Suite assertion string.
- * @returns False when the check fails or is not a supported assertion.
- */
-async function assertionHolds(page: Page, assertion: string): Promise<boolean> {
-  if (CART_ASSERT.test(assertion)) {
-    return (await page.locator("#cart-items li").count()) >= 1;
-  }
-  const contains = assertion.match(PAGE_CONTAINS);
-  if (contains) {
-    const text = contains[1].trim();
-    return (await page.getByText(text).count()) >= 1;
-  }
-  return false;
-}
-
-/**
- * Runs Fill/Click/Open/Wait/Press steps without sending secrets to an LLM.
- *
- * @param page - Active page.
- * @param steps - Parsed scriptable steps.
- * @param target - Suite target URL.
- * @param scope - Host allowlist.
- * @param budget - Suite budget.
- */
-async function runScriptable(
-  page: Page,
-  steps: ScriptStep[],
-  target: string,
-  scope: Scope,
-  budget: Budget,
-  outputDir: string,
-  screenshots: string[],
-): Promise<void> {
-  const actions: LlmAction[] = steps.map((step) => {
-    if (step.op === "fill") return { op: "fill", selector: step.selector, value: step.value };
-    if (step.op === "click") return { op: "click", selector: step.selector };
-    if (step.op === "open") return { op: "goto", url: joinUrl(target, step.url) };
-    if (step.op === "wait") return { op: "wait", ms: Math.min(step.ms, 5_000) };
-    return { op: "press", key: step.key };
-  });
-  await runActions(page, actions, scope, budget, outputDir, screenshots);
-}
-
-/**
- * Saved demo path: open the first product and add it to the cart.
- *
- * @param page - Active page already on the shop home.
- * @param scope - Host allowlist.
- * @param budget - Suite budget; refreshed before each Playwright action.
- */
-async function runSavedBuyOneItem(page: Page, scope: Scope, budget: Budget): Promise<void> {
-  await page.locator(".product-link").first().click({ timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  scope.assert(page.url());
-  await page.locator("#add-to-cart").click({ timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  await page.waitForURL(/\/cart/, { timeout: navTimeout(budget) });
-  budget.assertWithinLimits();
-  scope.assert(page.url());
-  const count = await page.locator("#cart-items li").count();
-  if (count < 1) throw new Error("Assertion failed: the cart is empty after add-to-cart");
-}
-
-/**
- * Executes planner actions with allowlist checks on navigation.
- *
- * @param page - Active page.
- * @param actions - Validated LLM actions.
- * @param scope - Host allowlist.
- * @param outputDir - Screenshot directory.
- * @param screenshots - Accumulated paths.
- * @param budget - Suite budget; checked before every action.
- */
-async function runActions(
-  page: Page,
-  actions: LlmAction[],
-  scope: Scope,
-  budget: Budget,
-  outputDir: string,
-  screenshots: string[],
-): Promise<void> {
-  for (const action of actions) {
-    const timeout = navTimeout(budget);
-    switch (action.op) {
-      case "goto": {
-        const url = action.url;
-        scope.assert(url);
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-        break;
-      }
-      case "click":
-        await locate(page, action.selector).first().click({ timeout });
-        await page.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
-        break;
-      case "fill":
-        await locate(page, action.selector).first().fill(action.value, { timeout });
-        break;
-      case "press":
-        await page.keyboard.press(action.key);
-        break;
-      case "wait":
-        if (action.selector) await locate(page, action.selector).first().waitFor({ timeout });
-        else await page.waitForTimeout(Math.min(action.ms ?? 500, 5_000, budget.remainingMs()));
-        break;
-      case "screenshot": {
-        const shot = path.join(outputDir, "screenshots", `${artifactSlug(action.name || "step")}.png`);
-        mkdirSync(path.dirname(shot), { recursive: true });
-        await page.screenshot({ path: shot, timeout });
-        screenshots.push(shot);
-        break;
-      }
-      default:
-        break;
-    }
-    budget.assertWithinLimits();
-    scope.assert(page.url());
-  }
-}
-
-/**
- * Maps ARIA-style planner selectors onto Playwright locators.
- *
- * @param page - Active page.
- * @param selector - CSS, `link Name`, or `role=link[name=...]`.
- */
-function locate(page: Page, selector: string) {
-  const trimmed = selector.trim();
-  const roleEq = trimmed.match(
-    /^(link|button|heading|img|image|textbox|searchbox|checkbox|radio|menuitem)\s*[:=]?\s+(.+)$/i,
-  );
-  if (roleEq) {
-    const role = roleEq[1].toLowerCase() === "image" ? "img" : roleEq[1].toLowerCase();
-    const name = roleEq[2].replace(/^["']|["']$/g, "").trim();
-    return page.getByRole(role as Parameters<Page["getByRole"]>[0], { name: new RegExp(escapeRe(name), "i") });
-  }
-  const roleAttr = trimmed.match(/^role=(\w+)(?:\[name=(.+)\])?$/i);
-  if (roleAttr) {
-    const nameRaw = (roleAttr[2] || "").replace(/^\/|\/i$/g, "").replace(/^["']|["']$/g, "");
-    return page.getByRole(
-      roleAttr[1] as Parameters<Page["getByRole"]>[0],
-      nameRaw ? { name: new RegExp(escapeRe(nameRaw), "i") } : undefined,
-    );
-  }
-  return page.locator(trimmed);
-}
-
-/**
- * Escapes a string for use inside a RegExp.
- *
- * @param value - Literal text.
- */
-function escapeRe(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
