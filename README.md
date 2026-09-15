@@ -20,11 +20,14 @@ Then it writes **one report**: pass / fail and what to fix.
 ## Empty folder (Phase 4)
 
 ```bash
+npm install golivecheck-agent
 npx golivecheck-agent init
 npx playwright install chromium
 npx golivecheck-agent run --only security,a11y,api
 npx golivecheck-agent report
 ```
+
+Install the package first so `npx playwright` uses the same Playwright version the CLI depends on.
 
 `init` writes `golivecheck.config.yaml` pointed at localhost. Change `target` / `allow` to a host you own before a live run.
 
@@ -33,7 +36,7 @@ Until the package is on npm, from a clone:
 ```bash
 npm install
 npm run build
-npx golivecheck-agent init
+node dist/cli.js init
 ```
 
 ---

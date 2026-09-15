@@ -90,14 +90,15 @@ Goal: AI once, deterministic after.
 
 ---
 
-## Phase 4 — Publish (required done)
+## Phase 4 — Publish (ready; npm publish pending)
 
-- [x] npm package `golivecheck-agent` (version `1.0.0`, public; `npx golivecheck-agent init` from packed bin)
-- [x] GitHub Action pin `uses: seethinajayadileep/golivecheck@v1` (create the `v1` tag after merge — [examples/github/publish.md](./examples/github/publish.md))
+- [x] npm package `golivecheck-agent` prepared (version `1.0.0`, public; verified with `npm pack` + empty-folder `init`)
+- [ ] `npm publish` and tags `v1.0.0` / `v1` (post-merge; [examples/github/publish.md](./examples/github/publish.md))
+- [x] GitHub Action pin documented as `uses: seethinajayadileep/golivecheck@v1` (create the `v1` tag after merge)
 - [x] Short demo clip in README (`docs/demo.svg` — screenshot of `npm run demo`)
 - [x] `SKILL.md` install notes for Claude / Cursor
 
-**Exit:** `npx golivecheck-agent init` works in an empty folder (verified from `npm pack`).
+**Exit:** `npx golivecheck-agent init` works in an empty folder after publish (verified locally from `npm pack`).
 
 ---
 
