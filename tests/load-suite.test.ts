@@ -78,6 +78,10 @@ jobs:
   });
 
   it("expands ${VAR} in target and steps", () => {
+    const previous = {
+      target: process.env.GOLIVECHECK_TARGET,
+      user: process.env.GOLIVECHECK_USER,
+    };
     process.env.GOLIVECHECK_TARGET = "http://127.0.0.1:4173";
     process.env.GOLIVECHECK_USER = "shopper";
     const file = writeSuite(`name: x
@@ -90,12 +94,18 @@ jobs:
     try {
       expect(loadSuite(file).target).toBe("http://127.0.0.1:4173");
     } finally {
-      delete process.env.GOLIVECHECK_TARGET;
-      delete process.env.GOLIVECHECK_USER;
+      restoreEnv("GOLIVECHECK_TARGET", previous.target);
+      restoreEnv("GOLIVECHECK_USER", previous.user);
     }
   });
 
   it("loads owned.yaml and login.yaml when target and allow env vars are set", () => {
+    const previous = {
+      target: process.env.GOLIVECHECK_TARGET,
+      allow: process.env.GOLIVECHECK_ALLOW,
+      user: process.env.GOLIVECHECK_USER,
+      password: process.env.GOLIVECHECK_PASSWORD,
+    };
     process.env.GOLIVECHECK_TARGET = "https://staging.example.com";
     process.env.GOLIVECHECK_ALLOW = "staging.example.com";
     process.env.GOLIVECHECK_USER = "shopper@example.com";
@@ -108,14 +118,15 @@ jobs:
       expect(login.target).toBe("https://staging.example.com");
       expect(login.allow).toEqual(["staging.example.com"]);
     } finally {
-      delete process.env.GOLIVECHECK_TARGET;
-      delete process.env.GOLIVECHECK_ALLOW;
-      delete process.env.GOLIVECHECK_USER;
-      delete process.env.GOLIVECHECK_PASSWORD;
+      restoreEnv("GOLIVECHECK_TARGET", previous.target);
+      restoreEnv("GOLIVECHECK_ALLOW", previous.allow);
+      restoreEnv("GOLIVECHECK_USER", previous.user);
+      restoreEnv("GOLIVECHECK_PASSWORD", previous.password);
     }
   });
 
   it("fails when a referenced env var is missing", () => {
+    const previous = process.env.GOLIVECHECK_TARGET;
     delete process.env.GOLIVECHECK_TARGET;
     const file = writeSuite(`name: x
 target: \${GOLIVECHECK_TARGET}
@@ -124,7 +135,11 @@ jobs:
     name: a
     url: /
 `);
-    expect(() => loadSuite(file)).toThrow(/Missing environment variable GOLIVECHECK_TARGET/);
+    try {
+      expect(() => loadSuite(file)).toThrow(/Missing environment variable GOLIVECHECK_TARGET/);
+    } finally {
+      restoreEnv("GOLIVECHECK_TARGET", previous);
+    }
   });
 
   it("rejects API jobs with no requests", () => {
@@ -137,3 +152,14 @@ jobs:
     expect(() => loadSuite(file)).toThrow(/non-empty requests/);
   });
 });
+
+/**
+ * Restores or deletes a process env key.
+ *
+ * @param name - Env var name.
+ * @param value - Previous value, or undefined if it was unset.
+ */
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
